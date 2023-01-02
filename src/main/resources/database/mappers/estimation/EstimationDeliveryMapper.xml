@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ibk.sb.restapi.biz.service.estimation.repo.EstimationDeliveryRepo">
+
+    <sql id="MARKET"><include refid="com.ibk.sb.restapi.biz.service.common.repo.SchemaRepo.MARKET"></include></sql>
+
+    <!-- PagingMapper ID -->
+    <sql id="pagingHeader"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageHeader"/></sql>
+    <sql id="pagingFooter"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageFooter"/></sql>
+
+    <select id="searchDvryEntp" parameterType="RequestSearchEstimationVO" resultType="EstimationDeliveryVO">
+        SELECT
+            ENTP_INFO_ID
+             , ENTP_NM
+        FROM <include refid="MARKET"/>TB_BOX_MKT_DVRY_INF_M TBMDIM
+        WHERE 1=1
+            AND ENTP_USE_YN = 'Y'
+            <if test="entpInfoId != null and !entpInfoId.equals('')">
+                AND ENTP_INFO_ID = #{entpInfoId}
+            </if>
+    </select>
+
+</mapper>

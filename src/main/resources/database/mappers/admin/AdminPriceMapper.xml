@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ibk.sb.restapi.biz.service.admin.repo.AdminPriceRepo">
+
+    <sql id="MARKET"><include refid="com.ibk.sb.restapi.biz.service.common.repo.SchemaRepo.MARKET"/></sql>
+
+    <!--    PagingMapper ID-->
+    <sql id="pagingHeader"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageHeader"/></sql>
+    <sql id="pagingFooter"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageFooter"/></sql>
+
+    <!-- 판매사별 총 판매 금액 -->
+    <select id="searchSelrList" resultType="AdminPriceVO" parameterType="RequestPriceSearchVO">
+        <include refid="pagingHeader"/>
+        SELECT
+            TBMSIM.SELR_USIS_ID
+            ,(SELECT COM_CD_NM FROM <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D WHERE COM_CD_ID = TBMSIM.MMBRTYPE_ID) AS MMBRTYPE_NM
+            ,(SELECT COM_CD_NM FROM <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D WHERE COM_CD_ID = TBMSIM.MMBRSTTS_ID) AS MMBRSTTS_NM
+            ,TBMFIM.BPLC_NM
+            ,TBMFIM.RPRSNTV_NM
+            ,NVL((SELECT COUNT(TBMPIM.PDF_INFO_ID) FROM <include refid="MARKET"/>TB_BOX_MKT_PDF_INF_M TBMPIM WHERE TBMPIM.SELR_USIS_ID = TBMSIM.SELR_USIS_ID),0) AS TOTAL_PDF_CNT
+            ,NVL((
+                SELECT
+                    SUM(TTAL_AMT)
+                FROM
+                    <include refid="MARKET"/>TB_BOX_MKT_ORDER_INF_M TBMOIM
+                    INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDF_R TBMODR ON TBMODR.ORDN_INFO_ID = TBMOIM.ORDN_INFO_ID
+                WHERE 1=1
+                    AND TBMODR.ORDN_STTS_ID = 'ODS00004' -- 배송완료기준
+                    AND TBMOIM.SELR_USIS_ID = TBMSIM.SELR_USIS_ID
+            ), 0) AS TOTAL_PRC
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_SELR_INF_M TBMSIM
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_FFPC_INF_M TBMFIM ON TBMFIM.UTLINSTT_ID = TBMSIM.SELR_USIS_ID
+        WHERE 1=1
+            AND TBMSIM.MMBRTYPE_ID IN('SRS00002','SRS00003') --판매사 기준(정회원, 에이전시)
+
+            -- 판매사명
+            <if test="searchType != null and searchType.equals('bplcNm')">
+                AND TBMFIM.BPLC_NM LIKE '%' || #{searchText} || '%'
+            </if>
+
+            -- 대표자명
+            <if test="searchType != null and searchType.equals('rprsntvNm')">
+                AND TBMFIM.RPRSNTV_NM LIKE '%' || #{searchText} || '%'
+            </if>
+
+            <if test="priceSort != null and priceSort.equals('desc')">
+                ORDER BY TOTAL_PRC DESC
+            </if>
+
+            <if test="priceSort != null and priceSort.equals('asc')">
+                ORDER BY TOTAL_PRC ASC
+            </if>
+        <include refid="pagingFooter"/>
+    </select>
+
+    <!-- 에이전시 총 판매 금액 -->
+    <select id="searchAgencyList" resultType="AdminPriceVO" parameterType="RequestPriceSearchVO">
+        <include refid="pagingHeader"/>
+        SELECT
+            TBMSIM.SELR_USIS_ID
+            ,(SELECT COM_CD_NM FROM <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D WHERE COM_CD_ID = TBMSIM.MMBRTYPE_ID) AS MMBRTYPE_NM
+            ,(SELECT COM_CD_NM FROM <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D WHERE COM_CD_ID = TBMSIM.MMBRSTTS_ID) AS MMBRSTTS_NM
+            ,TBMFIM.BPLC_NM
+            ,TBMFIM.RPRSNTV_NM
+            ,NVL((SELECT COUNT(TBMPIM.PDF_INFO_ID) FROM <include refid="MARKET"/>TB_BOX_MKT_PDF_INF_M TBMPIM WHERE TBMPIM.SELR_USIS_ID = TBMSIM.SELR_USIS_ID),0) AS TOTAL_PDF_CNT
+            ,NVL((
+                SELECT
+                    SUM(TTAL_AMT)
+                FROM
+                    <include refid="MARKET"/>TB_BOX_MKT_ORDER_INF_M TBMOIM
+                    INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDF_R TBMODR ON TBMODR.ORDN_INFO_ID = TBMOIM.ORDN_INFO_ID
+                WHERE 1=1
+                    AND TBMODR.ORDN_STTS_ID = 'ODS00004' -- 배송완료기준
+                    AND TBMOIM.SELR_USIS_ID = TBMSIM.SELR_USIS_ID
+            ), 0) AS TOTAL_PRC
+            ,(
+                SELECT
+                    COUNT(TBMAIM.ATHZ_PDF_INFO_ID)
+                FROM
+                    <include refid="MARKET"/>TB_BOX_MKT_AGEN_INF_M TBMAIM
+                WHERE 1=1
+                    AND TBMAIM.SEN_USIS_ID = TBMSIM.SELR_USIS_ID
+                    AND TBMAIM.PCSNSTTS_ID ='COC01003' -- 승인인것
+            ) AS AGEN_ARL_CNT --승인된 에이전시 상품
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_SELR_INF_M TBMSIM
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_FFPC_INF_M TBMFIM ON TBMFIM.UTLINSTT_ID = TBMSIM.SELR_USIS_ID
+        WHERE 1=1
+            AND TBMSIM.MMBRTYPE_ID ='SRS00003' --판매사 기준(에이전시)
+
+            -- 판매사명
+            <if test="searchType != null and searchType.equals('bplcNm')">
+                AND TBMFIM.BPLC_NM LIKE '%' || #{searchText} || '%'
+            </if>
+
+            -- 대표자명
+            <if test="searchType != null and searchType.equals('rprsntvNm')">
+                AND TBMFIM.RPRSNTV_NM LIKE '%' || #{searchText} || '%'
+            </if>
+
+            <if test="priceSort != null and priceSort.equals('desc')">
+                ORDER BY TOTAL_PRC DESC
+            </if>
+
+            <if test="priceSort != null and priceSort.equals('asc')">
+                ORDER BY TOTAL_PRC ASC
+            </if>
+
+        <include refid="pagingFooter"/>
+    </select>
+
+    <!-- 이벤트별 총 판매 금액 -->
+    <select id="searchEventList" resultType="SummaryEventVO" parameterType="RequestPriceSearchVO">
+        <include refid="pagingHeader"/>
+        SELECT
+            TBMEIM.EVNT_INF_ID
+            ,TBMEIM.EVNT_TTL
+            ,TBMEIM.EVNT_CON
+            ,TBMEIM.ENLS_SLDY_TS
+            ,TBMEIM.ENLS_CLDY_TS
+            ,TBMEIM.EVNT_STDY_TS -- 이벤트 시작일
+            ,TBMEIM.EVNT_FNDA_TS -- 이벤트 종료일
+            ,CASE
+                WHEN CURRENT_DATE BETWEEN TBMEIM.EVNT_STDY_TS AND TBMEIM.EVNT_FNDA_TS THEN 'ETS00001'
+                WHEN CURRENT_DATE <![CDATA[ < ]]> TBMEIM.EVNT_STDY_TS THEN 'ETS00002'
+                WHEN CURRENT_DATE <![CDATA[ > ]]> TBMEIM.EVNT_FNDA_TS THEN 'ETS00003'
+            END AS PGST_ID
+            ,TBMEIM.FILE_ID AS IMG_FILE_ID
+            ,TO_DATE(TO_CHAR(TBMEIM.EVNT_FNDA_TS, 'YYYY-MM-DD'), 'YYYY-MM-DD')-TO_DATE(TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD'), 'YYYY-MM-DD') AS DAYS
+            ,TO_DATE(TO_CHAR(TBMEIM.ENLS_CLDY_TS, 'YYYY-MM-DD'), 'YYYY-MM-DD')-TO_DATE(TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD'), 'YYYY-MM-DD') AS ENLS_DAYS
+            ,NVL((
+                SELECT
+                    SUM(TBMOPR.TTAL_AMT)
+                FROM
+                    <include refid="MARKET"/>TB_BOX_MKT_ORDER_INF_M TBMOIM
+                    INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDF_R TBMOPR ON TBMOPR.ORDN_INFO_ID = TBMOIM.ORDN_INFO_ID
+                    INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_EVNT_PDF_L TBMEPL ON TBMEPL.PDF_INFO_ID = TBMOPR.PDF_INFO_ID -- 상품인것
+                WHERE 1=1
+                    AND TBMEPL.EVNT_INF_ID = TBMEIM.EVNT_INF_ID
+                    AND TBMOIM.RGSN_TS BETWEEN TBMEIM.EVNT_STDY_TS AND TBMEIM.EVNT_FNDA_TS --이벤트 기간에 발생되었던 주문목록
+                    AND TBMOPR.ORDN_STTS_ID ='ODS00004' -- 주문 배송완료 기준
+                    AND TBMEPL.PCSNSTTS_ID = 'ETS01002' -- 선정된 상품인경우
+            ),0) AS TOTAL_PRC
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_EVNT_INF_M TBMEIM
+
+            <if test="priceSort != null and priceSort.equals('desc')">
+                ORDER BY TOTAL_PRC DESC
+            </if>
+
+            <if test="priceSort != null and priceSort.equals('asc')">
+                ORDER BY TOTAL_PRC ASC
+            </if>
+        <include refid="pagingFooter"/>
+    </select>
+</mapper>

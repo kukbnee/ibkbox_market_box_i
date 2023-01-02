@@ -1,0 +1,552 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ibk.sb.restapi.biz.service.agency.repo.AgencyProductCopyRepo">
+
+    <sql id="MARKET"><include refid="com.ibk.sb.restapi.biz.service.common.repo.SchemaRepo.MARKET"/></sql>
+
+    <!--    PagingMapper ID-->
+    <sql id="pagingHeader"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageHeader"/></sql>
+    <sql id="pagingFooter"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageFooter"/></sql>
+
+    <!-- 공통 : 신규파일정보 등록 -->
+    <insert id="productCopyFile" parameterType="AgencyProductFileVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_FILE_ATCH_M (
+                                                   FILE_ID
+                                                  ,FILE_NM
+                                                  ,FILE_PATH
+                                                  ,FILE_ETNS
+                                                  ,FILE_PTRN
+                                                  ,FILE_SIZE
+                                                  ,DEL_YN
+                                                  ,RGSN_USER_ID
+                                                  ,RGSN_TS
+        ) VALUES(
+                 #{newFileId}
+                ,#{fileNm}
+                ,#{filePath}
+                ,#{fileEtns}
+                ,#{filePtrn}
+                ,#{fileSize}
+                ,#{delYn}
+                ,#{rgsnUserId}
+                ,CURRENT_TIMESTAMP
+                )
+    </insert>
+
+    <!-- 상품기본정보, TB_BOX_MKT_PDF_INF_M -->
+    <insert id="productCopyPdfInfM" parameterType="RequestSearchAgencyVO">
+        INSERT ALL
+        INTO <include refid="MARKET"/>TB_BOX_MKT_PDF_INF_M(
+                                            PDF_INFO_ID
+                                            ,SELR_USIS_ID
+                                            ,PDF_CTGY_ID
+                                            ,PDF_PGRS_YN
+                                            ,PDF_STTS_ID
+                                            ,PDF_NM
+                                            ,MDLNM
+                                            ,BRF_DESC
+                                            ,BRF_SUB_DESC
+                                            ,DTL_DESC
+                                            ,PTNT_INFO_YN
+                                            ,AGEN_INF_ID
+                                            ,DEL_YN
+                                            ,RGSN_USER_ID
+                                            ,RGSN_TS
+                                        ) VALUES (
+                                            #{newPdfId}
+                                            ,#{senUsisId}
+                                            ,PDF_CTGY_ID
+                                            ,'N' /*진열안함*/
+                                            ,'GDS00002' /*판매중지*/
+                                            ,PDF_NM
+                                            ,MDLNM
+                                            ,BRF_DESC
+                                            ,BRF_SUB_DESC
+                                            ,DTL_DESC
+                                            ,PTNT_INFO_YN
+                                            ,#{agenInfId} /*에이전시요청ID*/
+                                            ,'N'
+                                            ,#{senUserId} /*요청 이용자ID*/
+                                            ,CURRENT_TIMESTAMP
+                                        )
+        SELECT
+             TBMPIM.PDF_CTGY_ID
+             ,TBMPIM.PDF_NM
+             ,TBMPIM.MDLNM
+             ,TBMPIM.BRF_DESC
+             ,TBMPIM.BRF_SUB_DESC
+             ,TBMPIM.DTL_DESC
+             ,TBMPIM.PTNT_INFO_YN
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_PDF_INF_M TBMPIM
+        WHERE 1=1
+          AND TBMPIM.PDF_INFO_ID = #{pdfId}
+          AND TBMPIM.DEL_YN = 'N'
+    </insert>
+
+    <!-- 상품판매정보, TB_BOX_MKT_PDF_SAL_L -->
+    <insert id="productCopyPdfSalL" parameterType="RequestSearchAgencyVO">
+        INSERT ALL
+        INTO <include refid="MARKET"/>TB_BOX_MKT_PDF_SAL_L(
+                                            PDF_INFO_ID
+                                            ,PDF_PRC
+                                            ,COM_PRCUT_ID
+                                            ,COM_PDFUT_ID
+                                            ,SALE_PRC
+                                            ,PRC_DSCS_YN
+                                            ,ESTT_USE_EN
+                                            ,ORDN_QTY_LMTN_USYN
+                                            ,ORDN_MNMM_QTY
+                                            ,ORDN_MXMM_QTY_YN
+                                            ,ORDN_MXMM_QTY
+                                            ,RGSN_USER_ID
+                                            ,RGSN_TS
+                                        ) VALUES (
+                                            #{newPdfId}
+                                            ,0 /*판매가*/
+                                            ,COM_PRCUT_ID
+                                            ,COM_PDFUT_ID
+                                            ,0 /*할인가*/
+                                            ,PRC_DSCS_YN
+                                            ,ESTT_USE_EN
+                                            ,ORDN_QTY_LMTN_USYN
+                                            ,ORDN_MNMM_QTY
+                                            ,ORDN_MXMM_QTY_YN
+                                            ,ORDN_MXMM_QTY
+                                            ,#{senUserId} /*요청 이용자ID*/
+                                            ,CURRENT_TIMESTAMP
+                                        )
+        SELECT
+             TBMPSL.COM_PRCUT_ID
+             ,TBMPSL.COM_PDFUT_ID
+             ,TBMPSL.SALE_PRC
+             ,TBMPSL.PRC_DSCS_YN
+             ,TBMPSL.ESTT_USE_EN
+             ,TBMPSL.ORDN_QTY_LMTN_USYN
+             ,TBMPSL.ORDN_MNMM_QTY
+             ,TBMPSL.ORDN_MXMM_QTY_YN
+             ,TBMPSL.ORDN_MXMM_QTY
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_PDF_SAL_L TBMPSL
+        WHERE 1=1
+          AND TBMPSL.PDF_INFO_ID = #{pdfId}
+    </insert>
+
+    <!-- 상품키워드정보, TB_BOX_MKT_PDF_KWR_R -->
+    <insert id="productCopyPdfKwrR" parameterType="RequestSearchAgencyVO">
+        INSERT ALL
+        INTO <include refid="MARKET"/>TB_BOX_MKT_PDF_KWR_R(
+                                            PDF_INFO_ID
+                                            ,INFO_SQN
+                                            ,KWR
+                                            ,RGSN_USER_ID
+                                            ,RGSN_TS
+                                        ) VALUES (
+                                            #{newPdfId}
+                                            ,INFO_SQN
+                                            ,KWR
+                                            ,#{senUserId}
+                                            ,CURRENT_TIMESTAMP
+                                        )
+        SELECT
+            TBMPKR.INFO_SQN
+            ,TBMPKR.KWR
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_PDF_KWR_R TBMPKR
+        WHERE 1=1
+          AND TBMPKR.PDF_INFO_ID = #{pdfId}
+    </insert>
+
+    <!-- 상품특허정보, TB_BOX_MKT_PDF_PAT_R -->
+    <insert id="productCopyPdfPatR" parameterType="RequestSearchAgencyVO">
+        INSERT ALL
+        INTO <include refid="MARKET"/>TB_BOX_MKT_PDF_PAT_R(
+                                            PDF_INFO_ID
+                                            ,INFO_SQN
+                                            ,PTNT_NM
+                                            ,PTNT_IPC
+                                            ,PTNT_STTS
+                                            ,PTNT_ALFR_NO
+                                            ,PTNT_ALFR_TS
+                                            ,PTNT_RTN
+                                            ,PTNT_TS
+                                            ,PTNT_RLOCAUS
+                                            ,RGSN_USER_ID
+                                            ,RGSN_TS
+                                        ) VALUES (
+                                            #{newPdfId}
+                                            ,INFO_SQN
+                                            ,PTNT_NM
+                                            ,PTNT_IPC
+                                            ,PTNT_STTS
+                                            ,PTNT_ALFR_NO
+                                            ,PTNT_ALFR_TS
+                                            ,PTNT_RTN
+                                            ,PTNT_TS
+                                            ,PTNT_RLOCAUS
+                                            ,#{senUserId}
+                                            ,CURRENT_TIMESTAMP
+                                        )
+        SELECT
+            TBMPPR.INFO_SQN AS INFO_SQN
+            ,TBMPPR.PTNT_NM AS PTNT_NM
+            ,TBMPPR.PTNT_IPC AS PTNT_IPC
+            ,TBMPPR.PTNT_STTS AS PTNT_STTS
+            ,TBMPPR.PTNT_ALFR_NO AS PTNT_ALFR_NO
+            ,TBMPPR.PTNT_ALFR_TS AS PTNT_ALFR_TS
+            ,TBMPPR.PTNT_RTN AS PTNT_RTN
+            ,TBMPPR.PTNT_TS AS PTNT_TS
+            ,TBMPPR.PTNT_RLOCAUS AS PTNT_RLOCAUS
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_PDF_PAT_R TBMPPR
+        WHERE 1=1
+          AND TBMPPR.PDF_INFO_ID = #{pdfId}
+    </insert>
+
+    <!-- 상품제품영상정보, TB_BOX_MKT_PDF_VID_R -->
+    <insert id="productCopyPdfVidR" parameterType="RequestSearchAgencyVO">
+        INSERT ALL
+        INTO <include refid="MARKET"/>TB_BOX_MKT_PDF_VID_R(
+                                            PDF_INFO_ID
+                                            ,INFO_SQN
+                                            ,FILE_ID
+                                            ,PICT_TTL
+                                            ,PICT_URL
+                                            ,USE_YN
+                                            ,DEL_YN
+                                            ,RGSN_USER_ID
+                                            ,RGSN_TS
+                                        ) VALUES (
+                                            #{newPdfId}
+                                            ,INFO_SQN
+                                            ,#{newFileId}
+                                            ,PICT_TTL
+                                            ,PICT_URL
+                                            ,USE_YN
+                                            ,DEL_YN
+                                            ,#{senUserId}
+                                            ,CURRENT_TIMESTAMP
+                                        )
+        SELECT
+            TBMPVR.INFO_SQN
+            ,TBMPVR.PICT_TTL
+            ,TBMPVR.PICT_URL
+            ,TBMPVR.USE_YN
+            ,TBMPVR.DEL_YN
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_PDF_VID_R TBMPVR
+        WHERE 1=1
+          AND TBMPVR.PDF_INFO_ID = #{pdfId}
+          AND TBMPVR.FILE_ID = #{fileId}
+    </insert>
+
+    <!-- 상품제품영상정보 파일상세정보 -->
+    <select id="productCopyPdfVidRFiles" parameterType="RequestSearchAgencyVO" resultType="AgencyProductFileVO">
+        SELECT
+            TBMFAM.*
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_PDF_VID_R TBMPVR
+            INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_FILE_ATCH_M TBMFAM ON TBMPVR.FILE_ID = TBMFAM.FILE_ID
+            INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_INF_M TBMPIM ON TBMPVR.PDF_INFO_ID = TBMPIM.PDF_INFO_ID
+        WHERE 1=1
+            AND TBMPVR.PDF_INFO_ID = #{pdfId}
+            AND TBMPIM.SELR_USIS_ID = #{recUsisId}
+    </select>
+
+    <!-- 상품이미지파일정보, TB_BOX_MKT_PDF_FIE_R -->
+    <insert id="productCopyPdfFieR" parameterType="RequestSearchAgencyVO">
+        INSERT ALL
+        INTO <include refid="MARKET"/>TB_BOX_MKT_PDF_FIE_R(
+                                            PDF_INFO_ID
+                                            ,FILE_ID
+                                            ,INFO_SQN
+                                            ,FILE_PTRN_ID
+                                            ,RGSN_USER_ID
+                                            ,RGSN_TS
+                                        ) VALUES (
+                                            #{newPdfId}
+                                            ,#{newFileId}
+                                            ,INFO_SQN
+                                            ,FILE_PTRN_ID
+                                            ,#{senUserId}
+                                            ,CURRENT_TIMESTAMP
+                                        )
+        SELECT
+            TBMPFR.FILE_ID
+            ,TBMPFR.INFO_SQN
+            ,TBMPFR.FILE_PTRN_ID
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_PDF_FIE_R TBMPFR
+        WHERE 1=1
+          AND TBMPFR.PDF_INFO_ID = #{pdfId}
+          AND TBMPFR.FILE_ID = #{fileId}
+    </insert>
+
+    <!-- 상품이미지파일정보 파일상세정보 -->
+    <select id="productCopyPdfFieRFiles" parameterType="RequestSearchAgencyVO" resultType="AgencyProductFileVO">
+        SELECT
+            TBMFAM.*
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_PDF_FIE_R TBMPFR
+            INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_FILE_ATCH_M TBMFAM ON TBMPFR.FILE_ID = TBMFAM.FILE_ID
+            INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_INF_M TBMPIM ON TBMPFR.PDF_INFO_ID = TBMPIM.PDF_INFO_ID
+        WHERE 1=1
+            AND TBMPFR.PDF_INFO_ID = #{pdfId}
+            AND TBMPIM.SELR_USIS_ID = #{recUsisId}
+    </select>
+
+    <!-- 상품화물서비스기본정보, TB_BOX_MKT_PDF_DVRY_M -->
+    <insert id="productCopyPdfDvryM" parameterType="RequestSearchAgencyVO">
+        INSERT ALL
+        INTO <include refid="MARKET"/>TB_BOX_MKT_PDF_DVRY_M(
+                                            PDF_INFO_ID
+                                            ,FILE_ID
+                                            ,RLONTF_ZPCD
+                                            ,RLONTF_ADR
+                                            ,RLONTF_DTAD
+                                            ,PRDTPCKN_UT_ID
+                                            ,DCH_GDS_PRC
+                                            ,PRDT_BRDH
+                                            ,PRDT_VRTC
+                                            ,PRDT_AHGD
+                                            ,PRDT_WGT
+                                            ,RGSN_USER_ID
+                                            ,RGSN_TS
+                                        ) VALUES (
+                                            #{newPdfId}
+                                            ,#{newFileId}
+                                            ,RLONTF_ZPCD
+                                            ,RLONTF_ADR
+                                            ,RLONTF_DTAD
+                                            ,PRDTPCKN_UT_ID
+                                            ,DCH_GDS_PRC
+                                            ,PRDT_BRDH
+                                            ,PRDT_VRTC
+                                            ,PRDT_AHGD
+                                            ,PRDT_WGT
+                                            ,#{senUserId}
+                                            ,CURRENT_TIMESTAMP
+                                        )
+        SELECT
+             TBMPDM.RLONTF_ZPCD
+             ,TBMPDM.RLONTF_ADR
+             ,TBMPDM.RLONTF_DTAD
+             ,TBMPDM.PRDTPCKN_UT_ID
+             ,TBMPDM.DCH_GDS_PRC
+             ,TBMPDM.PRDT_BRDH
+             ,TBMPDM.PRDT_VRTC
+             ,TBMPDM.PRDT_AHGD
+             ,TBMPDM.PRDT_WGT
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_PDF_DVRY_M TBMPDM
+        WHERE 1=1
+          AND TBMPDM.PDF_INFO_ID = #{pdfId}
+          <choose>
+              <when test="fileId != null and !fileId.equals('')">
+                  AND TBMPDM.FILE_ID = #{fileId}
+              </when>
+              <otherwise>
+                  AND TBMPDM.FILE_ID IS NULL
+              </otherwise>
+          </choose>
+    </insert>
+
+    <!-- 상품이미지파일정보 파일상세정보 -->
+    <select id="productCopyPdfDvryMFiles" parameterType="RequestSearchAgencyVO" resultType="AgencyProductFileVO">
+        SELECT
+            TBMFAM.*
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_PDF_DVRY_M TBMPDM
+            INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_FILE_ATCH_M TBMFAM ON TBMPDM.FILE_ID = TBMFAM.FILE_ID
+            INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_INF_M TBMPIM ON TBMPDM.PDF_INFO_ID = TBMPIM.PDF_INFO_ID
+        WHERE 1=1
+            AND TBMPDM.PDF_INFO_ID = #{pdfId}
+            AND TBMPIM.SELR_USIS_ID = #{recUsisId}
+    </select>
+
+    <!-- 상품화물서비스견적정보, TB_BOX_MKT_DVRY_ESTT_M -->
+    <insert id="productCopyDvryEsttM" parameterType="RequestSearchAgencyVO">
+        INSERT ALL
+        INTO <include refid="MARKET"/>TB_BOX_MKT_DVRY_ESTT_M(
+                                            PDF_INFO_ID
+                                            ,INFO_SQN
+                                            ,QTY
+                                            ,COM_PDF_UT_ID
+                                            ,ESTT_AMT
+                                            ,COM_PRC_UT_ID
+                                            ,ENTP_INFO_ID
+                                            ,RGSN_USER_ID
+                                            ,RGSN_TS
+                                        ) VALUES (
+                                            #{newPdfId}
+                                            ,INFO_SQN
+                                            ,QTY
+                                            ,COM_PDF_UT_ID
+                                            ,ESTT_AMT
+                                            ,COM_PRC_UT_ID
+                                            ,ENTP_INFO_ID
+                                            ,#{senUserId}
+                                            ,CURRENT_TIMESTAMP
+                                        )
+        SELECT
+             TBMDEM.INFO_SQN
+             ,TBMDEM.QTY
+             ,TBMDEM.COM_PDF_UT_ID
+             ,TBMDEM.ESTT_AMT
+             ,TBMDEM.COM_PRC_UT_ID
+             ,TBMDEM.ENTP_INFO_ID
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_DVRY_ESTT_M TBMDEM
+        WHERE 1=1
+          AND TBMDEM.PDF_INFO_ID = #{pdfId}
+    </insert>
+
+    <!-- 상품반품/교환정보, TB_BOX_MKT_PDF_RTIN_L -->
+    <select id="searchProductCopyPdfRtinL" parameterType="RequestSearchAgencyVO" resultType="AgencyProductRetrunVO">
+        SELECT
+            TBMPRL.RTGD_INRC_TRM
+             ,TBMPRL.RTGD_EXP
+             ,TBMPRL.RTGD_INRC_PRCD
+             ,TBMPRL.RTGD_INRC_DSLN
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_PDF_RTIN_L TBMPRL
+        INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_INF_M TBMPIM ON TBMPRL.PDF_INFO_ID = TBMPIM.PDF_INFO_ID
+        WHERE 1=1
+            AND TBMPRL.PDF_INFO_ID = (
+                                        SELECT
+                                            PDF_INFO_ID
+                                        FROM
+                                            (
+                                                SELECT
+                                                    TBMPIM.PDF_INFO_ID
+                                                FROM <include refid="MARKET"/>TB_BOX_MKT_PDF_INF_M TBMPIM WHERE TBMPIM.SELR_USIS_ID = #{senUsisId} AND TBMPIM.DEL_YN = 'N' ORDER BY TBMPIM.RGSN_TS DESC
+                                            ) WHERE rownum = 1
+                                    )
+            AND TBMPIM.SELR_USIS_ID = #{recUsisId}
+    </select>
+
+    <!-- 상품반품/교환정보, 정보등록 -->
+    <insert id="addProductCopyPdfRtinL" parameterType="AgencyProductRetrunVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_PDF_RTIN_L(
+                                                     PDF_INFO_ID
+                                                    ,RTGD_INRC_TRM
+                                                    ,RTGD_EXP
+                                                    ,RTGD_INRC_PRCD
+                                                    ,RTGD_INRC_DSLN
+                                                    ,RGSN_USER_ID
+                                                    ,RGSN_TS
+                                                ) VALUES (
+                                                    #{pdfInfoId}
+                                                    ,#{rtgdInrcTrm}
+                                                    ,#{rtgdExp}
+                                                    ,#{rtgdInrcPrcd}
+                                                    ,#{rtgdInrcDsln}
+                                                    ,#{rgsnUserId}
+                                                    ,CURRENT_TIMESTAMP
+                                                )
+    </insert>
+
+    <!-- 상품배송정보, TB_BOX_MKT_PDF_DEL_L -->
+    <insert id="productCopyPdfDelL" parameterType="RequestSearchAgencyVO">
+        INSERT ALL
+        INTO <include refid="MARKET"/>TB_BOX_MKT_PDF_DEL_L(
+                                            PDF_INFO_ID
+                                            ,DVRY_TYPE_ID
+                                            ,DVRY_PTRN_ID
+                                            ,DVRYNONE_PTRN_ID
+                                            ,ENTP_INFO_ID
+                                            ,DVRY_BSCPRCE
+                                            ,RGSN_USER_ID
+                                            ,RGSN_TS
+                                        ) VALUES (
+                                            #{newPdfId}
+                                            ,DVRY_TYPE_ID
+                                            ,DVRY_PTRN_ID
+                                            ,DVRYNONE_PTRN_ID
+                                            ,ENTP_INFO_ID
+                                            ,DVRY_BSCPRCE
+                                            ,#{senUserId}
+                                            ,CURRENT_TIMESTAMP
+                                        )
+        SELECT
+                TBMPDL.DVRY_TYPE_ID
+                ,TBMPDL.DVRY_PTRN_ID
+                ,TBMPDL.DVRYNONE_PTRN_ID
+                ,TBMPDL.ENTP_INFO_ID
+                ,TBMPDL.DVRY_BSCPRCE
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_PDF_DEL_L TBMPDL
+        WHERE 1=1
+          AND TBMPDL.PDF_INFO_ID = #{pdfId}
+    </insert>
+
+    <!-- 상품지역별배송정보, TB_BOX_MKT_PEAR_DVRY_M -->
+    <insert id="productCopyPearDvryM" parameterType="RequestSearchAgencyVO">
+        INSERT ALL
+        INTO <include refid="MARKET"/>TB_BOX_MKT_PEAR_DVRY_M(
+                                            PDF_INFO_ID
+                                            ,INFO_SQN
+                                            ,TRL
+                                            ,CTCOCRWD
+                                            ,AMT
+                                            ,COM_PRC_UT_ID
+                                            ,RGSN_USER_ID
+                                            ,RGSN_TS
+                                        ) VALUES (
+                                            #{newPdfId}
+                                            ,INFO_SQN
+                                            ,TRL
+                                            ,CTCOCRWD
+                                            ,AMT
+                                            ,COM_PRC_UT_ID
+                                            ,#{senUserId}
+                                            ,CURRENT_TIMESTAMP
+                                        )
+        SELECT
+                TBMPDM.INFO_SQN
+                ,TBMPDM.TRL
+                ,TBMPDM.CTCOCRWD
+                ,TBMPDM.AMT
+                ,TBMPDM.COM_PRC_UT_ID
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_PEAR_DVRY_M TBMPDM
+        WHERE 1=1
+          AND TBMPDM.PDF_INFO_ID = #{pdfId}
+    </insert>
+
+    <!-- 상품수량별배송정보, TB_BOX_MKT_QTY_DVRY_M -->
+    <insert id="productCopyQtyDvryM" parameterType="RequestSearchAgencyVO">
+        INSERT ALL
+        INTO <include refid="MARKET"/>TB_BOX_MKT_QTY_DVRY_M(
+                                            PDF_INFO_ID
+                                            ,INFO_SQN
+                                            ,QTY
+                                            ,COM_PDF_UT_ID
+                                            ,AMT
+                                            ,COM_PRC_UT_ID
+                                            ,RGSN_USER_ID
+                                            ,RGSN_TS
+                                        ) VALUES (
+                                            #{newPdfId}
+                                            ,INFO_SQN
+                                            ,QTY
+                                            ,COM_PDF_UT_ID
+                                            ,AMT
+                                            ,COM_PRC_UT_ID
+                                            ,#{senUserId}
+                                            ,CURRENT_TIMESTAMP
+                                        )
+        SELECT
+            TBMQDM.INFO_SQN
+            ,TBMQDM.QTY
+            ,TBMQDM.COM_PDF_UT_ID
+            ,TBMQDM.AMT
+            ,TBMQDM.COM_PRC_UT_ID
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_QTY_DVRY_M TBMQDM
+        WHERE 1=1
+          AND TBMQDM.PDF_INFO_ID = #{pdfId}
+    </insert>
+
+</mapper>

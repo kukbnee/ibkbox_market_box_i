@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ibk.sb.restapi.biz.service.test.repo.TestRepo">
+
+    <!--    Schema ID -->
+
+
+    <select id="testConnectDual" resultType="TestConnectDualVO">
+        SELECT
+            10 AS test_id
+             , 'TestConnectDualSuccess' AS test_content
+        FROM DUAL;
+    </select>
+
+    <select id="testPaging" parameterType="RequestTestPagingVO" resultType="TestDataVO">
+        <include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageHeader"></include>
+
+        SELECT
+        user_id
+        , TO_CHAR(regist_dt, 'YYYY-MM-DD') AS regist_dt
+        FROM FFPC_PLF_USER_LEDGR
+
+        <include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageFooter"></include>
+    </select>
+</mapper>

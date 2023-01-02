@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ibk.sb.restapi.biz.service.product.bundle.repo.BundleProductRepo">
+
+    <sql id="MARKET"><include refid="com.ibk.sb.restapi.biz.service.common.repo.SchemaRepo.MARKET"/></sql>
+
+    <!--    PagingMapper ID -->
+    <sql id="pagingHeader"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageHeader"/></sql>
+    <sql id="pagingFooter"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageFooter"/></sql>
+
+    <!--    묶음 상품 리스트 조회    -->
+    <select id="selectBundleProductList" parameterType="RequestSearchProductVO" resultType="SummaryBundleProductVO">
+        <include refid="pagingHeader"/>
+            SELECT
+                TBMPBL.BUN_INF_ID
+                , TBMPBL.INFO_SQN
+                , TBMPBL.MAIN_YN
+
+                , TBMPIM.PDF_INFO_ID
+
+                , TBMPIM.SELR_USIS_ID
+                , TBMFIM.BPLC_NM AS SELR_USIS_NAME
+
+                , TBMPIM.PDF_NM
+                , TBMPIM.BRF_DESC
+                , TBMPIM.AGEN_INF_ID
+                , CASE WHEN TBMPIM.AGEN_INF_ID IS NULL THEN 'N' ELSE 'Y' END AS AGEN_STATE
+                , TBMPIM.PDF_PGRS_YN
+                , TBMPIM.PDF_STTS_ID
+
+                , TBMPSL.PDF_PRC
+                , TBMPSL.SALE_PRC
+                , TBMPSL.COM_PRCUT_ID
+                , TBMPSL.PRC_DSCS_YN
+
+                , TBMCCD.COM_CD_NM AS COM_PRCUT_NAME
+
+                , TBMPFR.FILE_ID AS IMG_FILE_ID
+
+                , WISHCNT.WISH_CNT
+
+                <choose>
+                    <when test="loginUserId != null and !loginUserId.equals('') and loginUtlinsttId != null and !loginUtlinsttId.equals('')">
+                        , CASE WHEN TBMPIH.RGSN_USER_ID IS NULL THEN 'N' ELSE 'Y' END AS WISH_FLG
+                    </when>
+                    <otherwise>
+                        , 'N' AS WISH_FLG
+                    </otherwise>
+                </choose>
+
+            FROM <include refid="MARKET"/>TB_BOX_MKT_PDF_BUN_L TBMPBL
+
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_INF_M TBMPIM ON TBMPIM.PDF_INFO_ID = TBMPBL.PDF_INFO_ID
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_FFPC_INF_M TBMFIM ON TBMFIM.UTLINSTT_ID = TBMPIM.SELR_USIS_ID
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_SAL_L TBMPSL ON TBMPSL.PDF_INFO_ID = TBMPIM.PDF_INFO_ID
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D TBMCCD ON TBMCCD.COM_CD_ID = TBMPSL.COM_PRCUT_ID
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_FIE_R TBMPFR ON TBMPFR.PDF_INFO_ID = TBMPSL.PDF_INFO_ID AND TBMPFR.INFO_SQN = 1 AND FILE_PTRN_ID = #{filePtrnId}
+
+            LEFT JOIN (
+                SELECT
+                    PDF_INFO_ID ,SUM(1) AS WISH_CNT
+                FROM <include refid="MARKET"/>TB_BOX_MKT_PDF_WISH_R
+                WHERE 1 = 1
+                GROUP BY PDF_INFO_ID
+            ) WISHCNT ON WISHCNT.PDF_INFO_ID = TBMPIM.PDF_INFO_ID
+
+            <if test="loginUserId != null and !loginUserId.equals('') and loginUtlinsttId != null and !loginUtlinsttId.equals('')">
+                LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_WISH_R TBMPIH ON TBMPIH.PUCS_USIS_ID = #{loginUtlinsttId} AND TBMPIH.PUCS_ID = #{loginUserId} AND TBMPIH.PDF_INFO_ID = TBMPIM.PDF_INFO_ID
+            </if>
+
+            WHERE 1 = 1
+                AND TBMPIM.DEL_YN = 'N'
+                AND TBMPIM.PDF_PGRS_YN = 'Y' /* 진열함 */
+                AND TBMPBL.BUN_INF_ID = #{bunInfId}
+                <if test="pdfSttsId != null and !pdfSttsId.equals('')">
+                    AND TBMPIM.PDF_STTS_ID = #{pdfSttsId}
+                </if>
+
+                <if test="pdfInfoCon != null and !pdfInfoCon.equals('')">
+                    AND
+                    (
+                        LOWER(TBMPIM.PDF_NM) LIKE '%' || LOWER(#{pdfInfoCon}) || '%'
+                        OR LOWER(TBMPIM.BRF_DESC) LIKE '%' || LOWER(#{pdfInfoCon}) || '%'
+                        OR LOWER(TBMPIM.BRF_SUB_DESC) LIKE '%' || LOWER(#{pdfInfoCon}) || '%'
+                        OR LOWER(TBMPIM.DTL_DESC) LIKE '%' || LOWER(#{pdfInfoCon}) || '%'
+                        OR LOWER(TBMFIM.BPLC_NM) LIKE '%' || LOWER(#{pdfInfoCon}) || '%'
+                    )
+                </if>
+
+
+            ORDER BY TBMPBL.INFO_SQN ASC
+
+        <include refid="pagingFooter"/>
+    </select>
+
+    <!--    상품 묶음상품 정보 등록   -->
+    <insert id="insertBundleProductInfo" parameterType="BundleProductInfoVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_PDF_BUN_M
+        (
+            BUN_INF_ID
+            , SELR_USIS_ID
+            , FILE_ID
+            , PDF_NM
+            , PDF_CON
+            , MAIN_YN
+            , DEL_YN
+            , RGSN_USER_ID
+            , RGSN_TS
+            , AMNN_USER_ID
+            , AMNN_TS
+        )
+        VALUES
+        (
+            #{bunInfId}
+            , #{selrUsisId}
+            , #{fileId}
+            , #{pdfNm}
+            , #{pdfCon}
+            , #{mainYn}
+            , 'N'
+            , #{rgsnUserId}
+            , CURRENT_TIMESTAMP
+            , #{amnnUserId}
+            , CURRENT_TIMESTAMP
+        )
+    </insert>
+
+    <!--    상품 묶음상품 정보 수정   -->
+    <update id="updateBundleProductInfo" parameterType="BundleProductInfoVO">
+        UPDATE <include refid="MARKET"/>TB_BOX_MKT_PDF_BUN_M
+        SET
+            SELR_USIS_ID        = #{selrUsisId}
+            , FILE_ID           = #{fileId}
+            , PDF_NM            = #{pdfNm}
+            , PDF_CON           = #{pdfCon}
+            , MAIN_YN           = #{mainYn}
+            , AMNN_USER_ID      = #{amnnUserId}
+            , AMNN_TS           = CURRENT_TIMESTAMP
+        WHERE BUN_INF_ID = #{bunInfId}
+    </update>
+
+    <!--    상품 묶음상품 목록 등록   -->
+    <insert id="insertBundleProduct" parameterType="BundleProductVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_PDF_BUN_L
+        (
+            BUN_INF_ID
+            , PDF_INFO_ID
+            , INFO_SQN
+            , MAIN_YN
+            , RGSN_USER_ID
+            , RGSN_TS
+            , AMNN_USER_ID
+            , AMNN_TS
+        )
+        VALUES
+        (
+            #{bunInfId}
+            , #{pdfInfoId}
+            , (
+                SELECT CASE WHEN MAX(INFO_SQN) IS NULL THEN 1 ELSE MAX(INFO_SQN) + 1 END
+                FROM <include refid="MARKET"/>TB_BOX_MKT_PDF_BUN_L
+                WHERE BUN_INF_ID = #{bunInfId}
+            )
+            , #{mainYn}
+            , #{rgsnUserId}
+            , CURRENT_TIMESTAMP
+            , #{amnnUserId}
+            , CURRENT_TIMESTAMP
+        )
+    </insert>
+
+    <!--    상품 묶음상품 목록 삭제   -->
+    <delete id="deleteBundleProductList" parameterType="string">
+        DELETE FROM <include refid="MARKET"/>TB_BOX_MKT_PDF_BUN_L
+        WHERE BUN_INF_ID = #{bunInfId}
+    </delete>
+
+    <update id="updateBundleMainUsed" parameterType="RequestSearchProductVO">
+        UPDATE <include refid="MARKET"/>TB_BOX_MKT_PDF_BUN_M
+        SET
+            MAIN_YN           = #{mainPageFlg}
+        WHERE BUN_INF_ID = #{bunInfId}
+    </update>
+
+<!--    <delete id="deleteBundleProduct" parameterType="String">-->
+<!--        DELETE FROM IBKMKTUSER.TB_BOX_MKT_GDS_BUN_L-->
+<!--        WHERE GDS_ID = #{gdsId}-->
+<!--    </delete>-->
+
+</mapper>

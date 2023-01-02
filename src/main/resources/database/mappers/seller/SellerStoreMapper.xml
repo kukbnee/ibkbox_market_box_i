@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ibk.sb.restapi.biz.service.seller.repo.SellerStoreRepo">
+
+    <sql id="MARKET"><include refid="com.ibk.sb.restapi.biz.service.common.repo.SchemaRepo.MARKET"/></sql>
+
+    <!--    PagingMapper ID-->
+    <sql id="pagingHeader"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageHeader"/></sql>
+    <sql id="pagingFooter"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageFooter"/></sql>
+
+    <!--    판매자 스토어 카테고리 정보 조회  -->
+    <select id="selectSellerCategoryList" parameterType="string" resultType="SellerCategoryVO">
+        SELECT
+            '--' AS ONE_CTGY_ID
+            , '--' AS TWO_CTGY_ID
+            , '--' AS THR_CTGY_ID
+            , '--' AS FOR_CTGY_ID
+            , '전체' AS PDF_CTGY_NAME
+            , TBMPIM.PDF_CNT AS PDF_CNT
+        FROM (
+            SELECT
+                COUNT(0) AS PDF_CNT
+            FROM <include refid="MARKET"/>TB_BOX_MKT_PDF_INF_M
+            WHERE SELR_USIS_ID = #{selrUsisId}
+                AND DEL_YN = 'N'
+                AND PDF_PGRS_YN = 'Y' /* 진열함 */
+                AND SUBSTR(PDF_CTGY_ID, 1, 2) = '01'
+        ) TBMPIM
+        UNION ALL
+        SELECT
+            TBMCC.TMS1_CLSF_CD AS ONE_CTGY_ID
+            , TBMCC.TMS2_CLSF_CD AS TWO_CTGY_ID
+            , TBMCC.TMS3_CLSF_CD AS THR_CTGY_ID
+            , TBMCC.TMS4_CLSF_CD AS FOR_CTGY_ID
+            , TBMCC.TMS4_CLSF_NM AS PDF_CTGY_NAME
+            , TBMPIM.PDF_CNT AS PDF_CNT
+        FROM <include refid="MARKET"/>TB_BOX_MKT_CTGY_C TBMCC
+            INNER JOIN (
+                SELECT
+                    COUNT(0) AS PDF_CNT
+                    , SUBSTR(PDF_CTGY_ID, 1, 8) AS PDF_CTGY_ID
+                FROM <include refid="MARKET"/>TB_BOX_MKT_PDF_INF_M
+                WHERE SELR_USIS_ID = #{selrUsisId}
+                    AND DEL_YN = 'N'
+                    AND PDF_PGRS_YN = 'Y' /* 진열함 */
+                GROUP BY SUBSTR(PDF_CTGY_ID, 1, 8)
+            ) TBMPIM ON TBMPIM.PDF_CTGY_ID = SUBSTR(TBMCC.CTGY_ID, 1, 8)
+        WHERE TBMCC.TMS1_CLSF_CD = '01'
+        GROUP BY TBMCC.TMS1_CLSF_CD, TBMCC.TMS2_CLSF_CD, TBMCC.TMS3_CLSF_CD, TBMCC.TMS4_CLSF_CD, TBMCC.TMS4_CLSF_NM, TBMPIM.PDF_CNT
+    </select>
+
+    <!--    판매자 이미지 정보 리스트 조회   -->
+    <select id="selectSellerFileList" parameterType="string" resultType="SellerFileVO">
+        SELECT
+        TBMSIR.SELR_USIS_ID
+        , TBMSIR.FILE_ID
+        , TBMSIR.FILE_ID AS IMG_FILE_ID
+
+        , TBMFAH.FILE_NM
+
+        , TBMSIR.IMGPTRN_ID
+        , TBMSIR.TTL
+        , TBMSIR.URL
+        , TBMSIR.INFO_SQN
+        , TBMSIR.OPPB_YN
+        , TBMSIR.RGSN_USER_ID
+        , TBMSIR.RGSN_TS
+        , TO_CHAR(TBMSIR.RGSN_TS, 'YYYY-MM-DD HH24:MI:SS') AS RGSN_TS_STR
+        , TBMSIR.AMNN_USER_ID
+        , TBMSIR.AMNN_TS
+        FROM <include refid="MARKET"/>TB_BOX_MKT_SELR_IMG_R TBMSIR
+
+        LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_FILE_ATCH_M TBMFAH ON TBMFAH.FILE_ID = TBMSIR.FILE_ID
+
+        WHERE 1 = 1
+        AND SELR_USIS_ID = #{selrUsisId}
+        AND IMGPTRN_ID = #{imgptrnId}
+        ORDER BY TBMSIR.INFO_SQN
+    </select>
+
+    <!--    판매자 정보 조회   -->
+    <select id="selectSellerInfo" parameterType="string" resultType="SellerInfoVO">
+        SELECT
+        TBMSIM.SELR_USIS_ID
+
+        , TBMSIM.MMBRTYPE_ID
+        , TBMCCD.COM_CD_NM AS MMBRTYPE_NAME
+
+        , TBMSIM.USER_CP_CON
+
+        , TBMSIM.MMBRSTTS_ID
+        , TBMCCDD.COM_CD_NM AS MMBRSTTS_NAME
+
+        , TBMSIM.CSB_STMTNO
+        , TBMSIM.USE_YN
+        , TBMSIM.AMNN_USER_ID AS SELR_USER_ID
+        , TBMSIM.RGSN_USER_ID
+        , TBMSIM.RGSN_TS
+        , TBMSIM.AMNN_USER_ID
+        , TBMSIM.AMNN_TS
+        FROM
+        <include refid="MARKET"/>TB_BOX_MKT_SELR_INF_M TBMSIM
+
+        LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D TBMCCD ON TBMCCD.COM_CD_ID = TBMSIM.MMBRTYPE_ID
+        LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D TBMCCDD ON TBMCCDD.COM_CD_ID = TBMSIM.MMBRSTTS_ID
+
+        WHERE 1 = 1 AND TBMSIM.USE_YN = 'Y'
+        AND TBMSIM.SELR_USIS_ID = #{selrUsisId}
+    </select>
+
+    <!--    판매자 정보 등록   -->
+    <insert id="insertSellerInfo" parameterType="SellerInfoVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_SELR_INF_M
+        (
+        SELR_USIS_ID
+        , MMBRTYPE_ID
+        , USER_CP_CON
+        , MMBRSTTS_ID
+        , USE_YN
+        , RGSN_USER_ID
+        , RGSN_TS
+        , AMNN_USER_ID
+        , AMNN_TS
+        )
+        VALUES
+        (
+        #{selrUsisId}
+        , #{mmbrtypeId}
+        , #{userCpCon}
+        , #{mmbrsttsId}
+        , #{usyn}
+        , #{rgsnUserId}
+        , CURRENT_TIMESTAMP
+        , #{amnnUserId}
+        , CURRENT_TIMESTAMP
+        )
+    </insert>
+
+    <!--    판매자 정보 수정(회사 소개)    -->
+    <update id="updateSellerInfo" parameterType="SellerInfoVO">
+        UPDATE <include refid="MARKET"/>TB_BOX_MKT_SELR_INF_M
+        SET
+            USER_CP_CON         = #{userCpCon}
+            , AMNN_USER_ID      = #{amnnUserId}
+            , AMNN_TS           = CURRENT_TIMESTAMP
+        WHERE SELR_USIS_ID = #{selrUsisId}
+    </update>
+
+    <!--    판매자 이미지 정보 삭제   -->
+    <delete id="deleteSellerFile" parameterType="SellerFileVO">
+        DELETE FROM <include refid="MARKET"/>TB_BOX_MKT_SELR_IMG_R
+        WHERE SELR_USIS_ID = #{selrUsisId}
+        <if test="imgptrnId != null and !imgptrnId.equals('')">
+            AND IMGPTRN_ID = #{imgptrnId}
+        </if>
+    </delete>
+
+    <!--    판매자 이미지 정보 등록   -->
+    <insert id="insertSellerFile" parameterType="SellerFileVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_SELR_IMG_R
+        (
+            SELR_USIS_ID
+            , FILE_ID
+            , IMGPTRN_ID
+            , TTL
+            , URL
+            , INFO_SQN
+            , OPPB_YN
+            , RGSN_USER_ID
+            , RGSN_TS
+            , AMNN_USER_ID
+            , AMNN_TS
+        )
+        VALUES
+        (
+            #{selrUsisId}
+            , #{fileId}
+            , #{imgptrnId}
+            , #{ttl}
+            , #{url}
+            , (
+                SELECT CASE WHEN MAX(INFO_SQN) IS NULL THEN 1 ELSE MAX(INFO_SQN) + 1 END
+                FROM <include refid="MARKET"/>TB_BOX_MKT_SELR_IMG_R
+                WHERE SELR_USIS_ID = #{selrUsisId} AND IMGPTRN_ID = #{imgptrnId}
+            )
+            , #{oppbYn}
+            , #{rgsnUserId}
+            , CURRENT_TIMESTAMP
+            , #{amnnUserId}
+            , CURRENT_TIMESTAMP
+        )
+    </insert>
+
+    <!--    판매자 통신판매업 신고번호 수정    -->
+    <update id="updateCsbStmtno" parameterType="SellerInfoVO">
+        UPDATE <include refid="MARKET"/>TB_BOX_MKT_SELR_INF_M
+        SET
+            CSB_STMTNO         = #{csbStmtno}
+            , AMNN_USER_ID      = #{amnnUserId}
+            , AMNN_TS           = CURRENT_TIMESTAMP
+        WHERE SELR_USIS_ID = #{selrUsisId}
+    </update>
+
+</mapper>

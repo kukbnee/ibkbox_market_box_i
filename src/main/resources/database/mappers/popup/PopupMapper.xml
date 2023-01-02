@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ibk.sb.restapi.biz.service.popup.repo.PopupRepo">
+
+    <sql id="MARKET"><include refid="com.ibk.sb.restapi.biz.service.common.repo.SchemaRepo.MARKET"/></sql>
+
+    <!--    PagingMapper ID -->
+    <sql id="pagingHeader"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageHeader"/></sql>
+    <sql id="pagingFooter"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageFooter"/></sql>
+
+    <sql id="popupList">
+        SELECT
+            TBMPIM.POPUP_INF_ID
+            , TBMPIM.TTL
+            , TBMPIM.LINK
+            , TBMPIM.STDY
+            , TBMPIM.FNDA
+            , TBMFAM.FILE_ID
+            , TBMFAM.FILE_ID AS IMG_FILE_ID
+            , TBMFAM.FILE_PATH
+            , CASE WHEN CURRENT_DATE BETWEEN TBMPIM.STDY AND TBMPIM.FNDA THEN '공개'
+                    WHEN CURRENT_DATE > TBMPIM.FNDA THEN '종료'
+                    ELSE '대기' END AS STATUS
+        FROM
+        <include refid="MARKET"/>TB_BOX_MKT_POPUP_INF_M TBMPIM
+        LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_FILE_ATCH_M TBMFAM ON TBMFAM.FILE_ID = TBMPIM.FILE_ID AND TBMFAM.DEL_YN = 'N'
+    </sql>
+
+    <!--    팝업 리스트 조회   -->
+    <select id="selectPopupList" resultType="SummaryPopupVO">
+        <include refid="popupList" />
+        WHERE 1 = 1
+        AND TBMPIM.DEL_YN = 'N'
+        <![CDATA[ AND (TBMPIM.STDY < current_date AND TBMPIM.FNDA > current_date) ]]>
+    </select>
+
+    <select id="selectPopupPaging" parameterType="RequestSearchVO" resultType="PopupVO">
+        <include refid="pagingHeader"/>
+        <include refid="popupList" />
+        WHERE 1 = 1
+        AND TBMPIM.DEL_YN = 'N'
+        <if test="statusCode != null and statusCode.equals('display')">
+        AND CURRENT_DATE BETWEEN TBMPIM.STDY AND TBMPIM.FNDA
+        </if>
+        <if test="statusCode != null and statusCode.equals('close')">
+        AND CURRENT_DATE > TBMPIM.FNDA
+        </if>
+        <if test="statusCode != null and statusCode.equals('stanby')">
+        AND TBMPIM.STDY > CURRENT_DATE
+        </if>
+        ORDER BY TBMPIM.RGSN_TS DESC
+        <include refid="pagingFooter"/>
+    </select>
+
+    <select id="selectPopupInfo" resultType="PopupVO">
+        <include refid="popupList" />
+        WHERE 1 = 1
+        AND TBMPIM.POPUP_INF_ID = #{popupInfId}
+    </select>
+
+    <insert id="insertPopupInfo">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_POPUP_INF_M
+        (
+            POPUP_INF_ID
+            , FILE_ID
+            , TTL
+            , LINK
+            , STDY
+            , FNDA
+            , DEL_YN
+            , RGSN_USER_ID
+            , RGSN_TS
+            , AMNN_USER_ID
+            , AMNN_TS
+        )
+        VALUES
+        (
+            #{params.popupInfId}
+            , #{params.fileId}
+            , #{params.ttl}
+            , #{params.link}
+            , #{params.stdy}
+            , #{params.fnda}
+            , 'N'
+            , #{params.rgsnUserId}
+            , CURRENT_TIMESTAMP
+            , #{params.amnnUserId}
+            , CURRENT_TIMESTAMP
+        )
+    </insert>
+
+    <update id="updatePopupInfo">
+        UPDATE <include refid="MARKET"/>TB_BOX_MKT_POPUP_INF_M
+        SET
+            TTL = #{params.ttl}
+            , LINK = #{params.link}
+            , STDY = #{params.stdy}
+            , FNDA = #{params.fnda}
+            , FILE_ID = #{params.fileId}
+            , AMNN_USER_ID = #{params.amnnUserId}
+            , AMNN_TS = CURRENT_TIMESTAMP
+        WHERE 1=1
+        AND POPUP_INF_ID = #{params.popupInfId}
+    </update>
+
+    <update id="deletePopupInfo">
+        UPDATE <include refid="MARKET"/>TB_BOX_MKT_POPUP_INF_M
+        SET
+            DEL_YN = 'Y'
+            , AMNN_USER_ID = #{params.amnnUserId}
+            , AMNN_TS = CURRENT_TIMESTAMP
+        WHERE 1=1
+        AND POPUP_INF_ID = #{params.popupInfId}
+    </update>
+
+</mapper>

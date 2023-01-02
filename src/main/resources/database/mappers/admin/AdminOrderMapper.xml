@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ibk.sb.restapi.biz.service.admin.repo.AdminOrderRepo">
+
+    <sql id="MARKET"><include refid="com.ibk.sb.restapi.biz.service.common.repo.SchemaRepo.MARKET"/></sql>
+
+    <!--    PagingMapper ID-->
+    <sql id="pagingHeader"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageHeader"/></sql>
+    <sql id="pagingFooter"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageFooter"/></sql>
+
+    <!-- 주문목록 조회 -->
+    <select id="searchOrderList" resultType="AdminOrderVO" parameterType="RequestOrderSearchVO">
+        <include refid="pagingHeader"/>
+        SELECT
+            TBMOIM.ORDN_INFO_ID
+            ,UPPER(TBMOIM.CNTT_NO_ID) AS CNTT_NO_ID
+            ,TBMOIM.PUCS_USIS_ID
+            ,TBMFIM_PUCS.BPLC_NM AS PUCS_BPLC_NM
+            ,TBMFIM_PUCS.RPRSNTV_NM AS PUCS_RPRSNTV_NM
+            ,TBMSIM_PUCS.MMBRTYPE_ID AS PUCS_MMBRTYPE_ID
+            ,(SELECT COM_CD_NM FROM <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D WHERE COM_CD_ID = TBMSIM_PUCS.MMBRTYPE_ID) AS PUCS_MMBRTYPE_NM
+            ,TBMOIM.SELR_USIS_ID
+            ,TBMFIM_SELR.BPLC_NM AS SELR_BPLC_NM
+            ,TBMFIM_SELR.RPRSNTV_NM AS SELR_RPRSNTV_NM
+            ,TBMSIM_SELR.MMBRTYPE_ID AS SELR_MMBRTYPE_ID
+            ,(SELECT COM_CD_NM FROM <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D WHERE COM_CD_ID = TBMSIM_SELR.MMBRTYPE_ID) AS SELR_MMBRTYPE_NM
+            ,TBMOIM.STLM_INFO_ID
+            ,TBMOIM.RGSN_TS AS ORDER_RGSN_TS
+            ,TBMPPL.STLMPTRN_ID
+            ,(SELECT COM_CD_NM FROM <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D WHERE COM_CD_ID = TBMPPL.STLMPTRN_ID) AS STLMPTRN_NM
+            ,TBMPPL.STLMSTTS_ID
+            ,(SELECT COM_CD_NM FROM <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D WHERE COM_CD_ID = TBMPPL.STLMSTTS_ID) AS STLMSTTS_NM
+            ,TBMPPL.AMT AS PAY_AMT
+            ,TBMPPL.STLM_RSLT_ID
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_ORDER_INF_M TBMOIM
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_PAY_L TBMPPL ON TBMPPL.STLM_INFO_ID = TBMOIM.STLM_INFO_ID
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_FFPC_INF_M TBMFIM_PUCS ON TBMFIM_PUCS.UTLINSTT_ID = TBMOIM.PUCS_USIS_ID
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_FFPC_INF_M TBMFIM_SELR ON TBMFIM_SELR.UTLINSTT_ID = TBMOIM.SELR_USIS_ID
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_SELR_INF_M TBMSIM_SELR ON TBMSIM_SELR.SELR_USIS_ID = TBMOIM.SELR_USIS_ID
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_SELR_INF_M TBMSIM_PUCS ON TBMSIM_PUCS.SELR_USIS_ID = TBMOIM.PUCS_USIS_ID
+        WHERE 1=1
+        --주문필터 전체 인경우
+        <if test="ordnSttsId != null and ordnSttsId.equals('')">
+            AND TBMOIM.ORDN_INFO_ID IN(
+                SELECT TBMOPR.ORDN_INFO_ID FROM <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDF_R TBMOPR GROUP BY TBMOPR.ORDN_INFO_ID
+            )
+        </if>
+
+        --주문필터 전체가 아닌 경우
+        <if test="ordnSttsId != null and !ordnSttsId.equals('')">
+            --주문번호/구매자명/판매자명 검색
+            <if test="searchType != null and !searchType.equals('pdfNm')">
+                AND TBMOIM.ORDN_INFO_ID IN(
+                    SELECT TBMOPR.ORDN_INFO_ID FROM <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDF_R TBMOPR WHERE TBMOPR.ORDN_STTS_ID = #{ordnSttsId} GROUP BY TBMOPR.ORDN_INFO_ID
+                )
+            </if>
+
+            --상품명 검색
+            <if test="searchType != null and searchType.equals('pdfNm')">
+                AND TBMOIM.ORDN_INFO_ID IN(
+                    SELECT TBMOPR.ORDN_INFO_ID FROM <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDF_R TBMOPR WHERE TBMOPR.ORDN_STTS_ID = #{ordnSttsId} AND TBMOPR.PDF_NM LIKE '%' || #{searchText} || '%' GROUP BY TBMOPR.ORDN_INFO_ID
+                )
+            </if>
+        </if>
+
+        --주문번호 검색
+        <if test="searchType != null and searchType.equals('orderId')">
+            AND TBMOIM.CNTT_NO_ID LIKE '%' || #{searchText} || '%'
+        </if>
+
+        --구매자명
+        <if test="searchType != null and searchType.equals('pucs')">
+            AND (TBMFIM_PUCS.BPLC_NM LIKE '%' || #{searchText} || '%' OR TBMFIM_PUCS.RPRSNTV_NM LIKE '%' || #{searchText} || '%')
+        </if>
+
+        --판매자명
+        <if test="searchType != null and searchType.equals('selr')">
+            AND (TBMFIM_SELR.BPLC_NM LIKE '%' || #{searchText} || '%' OR TBMFIM_SELR.RPRSNTV_NM LIKE '%' || #{searchText} || '%')
+        </if>
+        ORDER BY TBMOIM.RGSN_TS DESC
+        <include refid="pagingFooter"/>
+    </select>
+
+    <!-- 주문상품 목록 조회 -->
+    <select id="searchOrderProductList" resultType="AdminOrderProductVO" parameterType="string">
+        SELECT
+            TBMOPR.PDF_NM
+            ,TBMOPR.ORDN_PTRN_ID --견적/개별상품 코드
+            ,(SELECT COM_CD_NM FROM <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D WHERE COM_CD_ID = TBMOPR.ORDN_PTRN_ID) AS ORDN_PTRN_NM --견적/개별상품 명
+            ,TBMOPR.PDF_INFO_ID
+            ,(SELECT DECODE(COUNT(TBMPIM.AGEN_INF_ID), 1, 'Y', 'N') FROM <include refid="MARKET"/>TB_BOX_MKT_PDF_INF_M TBMPIM WHERE TBMPIM.PDF_INFO_ID = TBMOPR.PDF_INFO_ID) AS AGEN_STATE
+            ,TBMOPR.QTY
+            ,TBMOPR.PDF_PRC
+            ,TBMOPR.TTAL_AMT
+            ,(SELECT TMS5_CLSF_NM FROM <include refid="MARKET"/>TB_BOX_MKT_CTGY_C WHERE CTGY_ID = TBMOPR.PDF_CTGY_ID) AS CTGY_NM
+            ,(SELECT COM_CD_NM FROM <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D WHERE COM_CD_ID = TBMOPR.DVRY_PTRN_ID) AS DVRY_PTRN_NM --배송유형
+            ,(SELECT COM_CD_NM FROM <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D WHERE COM_CD_ID = TBMOPR.DVRY_INFO_ID) AS DVRY_INFO_NM --배송정보ID
+            ,(SELECT COM_CD_NM FROM <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D WHERE COM_CD_ID = TBMOPR.ORDN_STTS_ID) AS ORDN_STTS_NM --주문상태 명
+            ,TBMOPR.ORDN_STTS_ID --주문상태 ID
+            ,(SELECT ESTT_INFO_ID FROM <include refid="MARKET"/>TB_BOX_MKT_ESM_INF_M TBMEIM WHERE 1=1 AND TBMEIM.ORDN_INFO_ID = TBMOPR.ORDN_INFO_ID) AS ESTT_INFO_ID
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDF_R TBMOPR
+        WHERE 1=1
+            AND TBMOPR.ORDN_INFO_ID = #{ordnInfoId}
+            <if test="ordnSttsId != null and !ordnSttsId.equals('')">
+                AND TBMOPR.ORDN_STTS_ID = #{ordnSttsId}
+            </if>
+        ORDER BY TBMOPR.INFO_SQN ASC;
+    </select>
+</mapper>

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ibk.sb.restapi.biz.service.common.repo.PageRepo">
+    <sql id="pageHeader">
+        SELECT
+               page_result.*
+        FROM
+            (
+                SELECT
+                    ROWNUM AS rnum
+                    , COUNT(*) OVER() AS total_cnt
+                    , tb_result.*
+
+                FROM (
+    </sql>
+
+    <sql id="pageFooter">
+                ) tb_result
+
+                <!--WHERE <![CDATA[ ROWNUM <= #{page} * #{record} ]]>-->
+                <!--검색속도상 위에서 ROWNUM stop key로 한번 Fetch를 끊어주는 편이 좋지만 total_cnt를 구하는 쿼리를 따로 두지 않기 위해 마지막에 조건절을 세팅-->
+            ) page_result
+
+        WHERE <![CDATA[
+                    (#{page} - 1) * #{record} < page_result.rnum
+                    AND page_result.rnum <= #{page} * #{record}
+        ]]>
+    </sql>
+</mapper>

@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ibk.sb.restapi.biz.service.product.buyer.repo.BuyerProductRepo">
+
+    <sql id="MARKET"><include refid="com.ibk.sb.restapi.biz.service.common.repo.SchemaRepo.MARKET"/></sql>
+
+    <!--    PagingMapper ID -->
+    <sql id="pagingHeader"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageHeader"/></sql>
+    <sql id="pagingFooter"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageFooter"/></sql>
+
+    <!--    바이어 상품 정보 조회    -->
+    <select id="selectBuyerProductInfo" parameterType="RequestBuyerProductInfoSearchVO" resultType="BuyerProductInfoVO">
+        SELECT
+            TBMBIR.BUYER_INF_ID
+            , TBMBIR.SELR_USIS_ID
+            , TBMFIMM.BPLC_NM AS SELR_USIS_NM
+            , TBMBIR.FILE_ID
+            , TBMFAM.FILE_NM
+            , TBMBIR.SEN_EML
+            , TBMBIR.REC_EML
+            , TBMBIR.TTL
+            , TBMBIR.CON
+            , TBMBIR.DEL_YN
+            , TBMBIR.RGSN_USER_ID
+            , TBMBIR.RGSN_TS
+            , TBMBIR.AMNN_USER_ID
+            , TBMBIR.AMNN_TS
+        FROM
+             <include refid="MARKET"/>TB_BOX_MKT_BUYER_INF_R TBMBIR
+
+        LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_FILE_ATCH_M TBMFAM ON TBMBIR.FILE_ID = TBMFAM.FILE_ID
+        LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_FFPC_INF_M TBMFIMM ON TBMFIMM.UTLINSTT_ID = TBMBIR.SELR_USIS_ID
+
+        WHERE 1 = 1
+            AND TBMBIR.DEL_YN = 'N'
+            AND TBMBIR.BUYER_INF_ID = #{buyerInfId}
+            <if test="selrUsisId != null and !selrUsisId.equals('')">
+                AND TBMBIR.SELR_USIS_ID = #{selrUsisId}
+            </if>
+    </select>
+
+    <select id="selectBuyerProductInfoList" parameterType="RequestBuyerProductInfoSearchVO" resultType="BuyerProductInfoVO">
+        SELECT
+               info.BUYER_INF_ID,
+               info.UTLINSTT_ID,
+               info.BUN_TTL,
+               info.BUN_CON,
+               info.DEL_YN,
+               info.RGSN_TS,
+               COUNT(prd.BUN_INF_ID) AS productCounts
+        FROM IBKMKTUSER.TB_BOX_MKT_BUYER_INF_R info
+        LEFT JOIN
+            (SELECT
+                    BUN_INF_ID
+            FROM IBKMKTUSER.TB_BOX_MKT_BUYER_GDS_L
+            GROUP BY BUN_INF_ID) prd ON (info.BUN_INF_ID = prd.BUN_INF_ID)
+        GROUP BY info.BUN_INF_ID, info.UTLINSTT_ID, info.BUN_TTL, info.BUN_CON, info.DEL_YN, info.RGSN_TS;
+        <if test="orderByDate != null and orderByDate.equals('')">
+        ORDER BY info.RGSN_TS
+        </if>
+    </select>
+
+    <!--    마이페이지 상품관리 바이어 상품 정보 등록 -->
+    <insert id="insertBuyerProductInfo" parameterType="BuyerProductInfoVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_BUYER_INF_R
+        (
+            BUYER_INF_ID
+            , SELR_USIS_ID
+            , FILE_ID
+            , SEN_EML
+            , REC_EML
+            , TTL
+            , CON
+            , DEL_YN
+            , RGSN_USER_ID
+            , RGSN_TS
+            , AMNN_USER_ID
+            , AMNN_TS
+
+        )
+        VALUES
+        (
+            #{buyerInfId}
+            , #{selrUsisId}
+            , #{fileId}
+            , #{senEml}
+            , #{recEml}
+            , #{ttl}
+            , #{con}
+            , 'N'
+            , #{rgsnUserId}
+            , CURRENT_TIMESTAMP
+            , #{amnnUserId}
+            , CURRENT_TIMESTAMP
+        )
+    </insert>
+
+    <!--    마이페이지 상품관리 바이어 상품 등록    -->
+    <insert id="insertBuyerProduct" parameterType="BuyerProductVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_BUYER_PDF_L
+        (
+            BUYER_INF_ID
+            , PDF_INFO_ID
+            , INFO_SQN
+            , RGSN_USER_ID
+            , RGSN_TS
+            , AMNN_USER_ID
+            , AMNN_TS
+        )
+        VALUES
+        (
+            #{buyerInfId}
+            , #{pdfInfoId}
+            , (
+                SELECT CASE WHEN MAX(INFO_SQN) IS NULL THEN 1 ELSE MAX(INFO_SQN) + 1 END
+                FROM <include refid="MARKET"/>TB_BOX_MKT_BUYER_PDF_L
+                WHERE BUYER_INF_ID = #{buyerInfId}
+            )
+            , #{rgsnUserId}
+            , CURRENT_TIMESTAMP
+            , #{amnnUserId}
+            , CURRENT_TIMESTAMP
+        )
+    </insert>
+
+    <!--    바이어 상품 정보 수정    -->
+    <update id="updateBuyerProductInfo" parameterType="BuyerProductInfoVO">
+        UPDATE
+            <include refid="MARKET"/>TB_BOX_MKT_BUYER_INF_R
+        SET
+            SELR_USIS_ID       = #{selrUsisId}
+            , FILE_ID            = #{fileId}
+            , SEN_EML            = #{senEml}
+            , REC_EML            = #{recEml}
+            , TTL                = #{ttl}
+            , CON                = #{con}
+            , AMNN_USER_ID       = #{amnnUserId}
+            , AMNN_TS            = CURRENT_TIMESTAMP
+        WHERE
+            BUYER_INF_ID = #{buyerInfId}
+    </update>
+
+    <!--    바이어 상품 정보 삭제    -->
+    <update id="deleteBuyerProductInfo" parameterType="BuyerProductInfoVO">
+        UPDATE <include refid="MARKET"/>TB_BOX_MKT_BUYER_INF_R
+        SET
+            DEL_YN              = 'Y'
+            , AMNN_USER_ID      = #{amnnUserId}
+            , AMNN_TS           = CURRENT_TIMESTAMP
+        WHERE
+              BUYER_INF_ID = #{buyerInfId}
+    </update>
+
+    <!--    마이페이지 상품관리 바이어 상품 삭제    -->
+    <delete id="deleteBuyerProduct" parameterType="string">
+        DELETE FROM <include refid="MARKET"/>TB_BOX_MKT_BUYER_PDF_L
+        WHERE BUYER_INF_ID = #{buyerInfId}
+    </delete>
+
+
+</mapper>

@@ -1,0 +1,266 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ibk.sb.restapi.biz.service.order.repo.OrderReturnRepo">
+
+    <sql id="MARKET"><include refid="com.ibk.sb.restapi.biz.service.common.repo.SchemaRepo.MARKET"/></sql>
+
+    <!-- PagingMapper ID-->
+    <sql id="pagingHeader"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageHeader"/></sql>
+    <sql id="pagingFooter"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageFooter"/></sql>
+
+    <!-- 주문정보 가져오기 -->
+    <select id="orderProductInfo" parameterType="RequestReturnVO" resultType="OrderReturnVO">
+        SELECT
+            TBMOIM.PUCS_USIS_ID
+            ,TBMOIM.SELR_USIS_ID
+            ,TBMOPR.ORDN_STTS_ID
+            ,TBMOPR.PDF_NM
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_ORDER_INF_M TBMOIM
+            INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDF_R TBMOPR ON TBMOPR.ORDN_INFO_ID = TBMOIM.ORDN_INFO_ID
+        WHERE 1=1
+          AND TBMOIM.ORDN_INFO_ID = #{ordnInfoId}
+          AND TBMOPR.INFO_SQN = #{infoSqn}
+    </select>
+
+    <!-- 주문상태 갱신 -->
+    <update id="updateReturnState" parameterType="RequestReturnVO">
+        UPDATE
+            <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDF_R TBMOPR
+        SET
+            TBMOPR.ORDN_STTS_ID = #{ordnSttsId}
+            ,TBMOPR.AMNN_USER_ID = #{userId}
+            ,TBMOPR.AMNN_TS = CURRENT_TIMESTAMP
+        WHERE 1=1
+          AND TBMOPR.ORDN_INFO_ID = (
+                                        SELECT
+                                            TBMOIM.ORDN_INFO_ID
+                                        FROM
+                                            <include refid="MARKET"/>TB_BOX_MKT_ORDER_INF_M TBMOIM
+                                        WHERE 1=1
+                                            AND TBMOIM.ORDN_INFO_ID = #{ordnInfoId}
+                                        <if test='returnType != null and returnType.equals("buyer")'>
+                                            AND TBMOIM.PUCS_USIS_ID = #{usisId}
+                                        </if>
+                                        <if test='returnType != null and returnType.equals("selr")'>
+                                            AND TBMOIM.SELR_USIS_ID = #{usisId}
+                                        </if>
+                                    )
+          AND TBMOPR.INFO_SQN = #{infoSqn}
+    </update>
+
+    <!-- 주문상태 갱신 -->
+    <insert id="addReturnStateHistory" parameterType="RequestReturnVO">
+        INSERT ALL
+        INTO <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDF_H(
+                                            ORDN_INFO_ID
+                                            ,INFO_SQN
+                                            ,MDPH_SQN
+                                            ,ORDN_PTRN_ID
+                                            ,PDF_CTGY_ID
+                                            ,PDF_NM
+                                            ,QTY
+                                            ,PDF_PRC
+                                            ,TTAL_AMT
+                                            ,DVRY_PTRN_ID
+                                            ,DVRY_INFO_ID
+                                            ,ORDN_STTS_ID
+                                            ,PDF_INFO_ID
+                                            ,RGSN_USER_ID
+                                            ,RGSN_TS
+                                        ) VALUES (
+                                            ORDN_INFO_ID
+                                            ,INFO_SQN
+                                            ,MDPH_SQN
+                                            ,ORDN_PTRN_ID
+                                            ,PDF_CTGY_ID
+                                            ,PDF_NM
+                                            ,QTY
+                                            ,PDF_PRC
+                                            ,TTAL_AMT
+                                            ,DVRY_PTRN_ID
+                                            ,DVRY_INFO_ID
+                                            ,#{ordnSttsId}
+                                            ,PDF_INFO_ID
+                                            ,#{userId}
+                                            ,CURRENT_TIMESTAMP
+                                        )
+        SELECT
+            TBMOPR.ORDN_INFO_ID
+            ,TBMOPR.INFO_SQN
+            , (NVL(B.MAX_MDPH_SQN, 0) + ROW_NUMBER() OVER (PARTITION BY TBMOPR.ORDN_INFO_ID, TBMOPR.INFO_SQN ORDER BY TBMOPR.RGSN_TS ASC)) AS MDPH_SQN
+            ,TBMOPR.ORDN_PTRN_ID
+            ,TBMOPR.PDF_CTGY_ID
+            ,TBMOPR.PDF_NM
+            ,TBMOPR.QTY
+            ,TBMOPR.PDF_PRC
+            ,TBMOPR.TTAL_AMT
+            ,TBMOPR.DVRY_PTRN_ID
+            ,TBMOPR.DVRY_INFO_ID
+            ,TBMOPR.PDF_INFO_ID
+        FROM <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDF_R TBMOPR
+        LEFT OUTER JOIN (
+            SELECT ORDN_INFO_ID, INFO_SQN, NVL(MAX(MDPH_SQN), 1) AS MAX_MDPH_SQN
+            FROM <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDF_H
+            GROUP BY ORDN_INFO_ID, INFO_SQN
+        ) B ON (TBMOPR.ORDN_INFO_ID = B.ORDN_INFO_ID AND TBMOPR.INFO_SQN = B.INFO_SQN)
+        WHERE 1=1
+          AND TBMOPR.ORDN_INFO_ID = #{ordnInfoId}
+          AND TBMOPR.INFO_SQN = #{infoSqn}
+    </insert>
+
+    <!-- 반품 정보 가져오기 -->
+    <select id="orderProductReturnInfo" parameterType="RequestReturnVO" resultType="OrderReturnVO">
+        SELECT
+            TBMOIM.ORDN_INFO_ID
+            ,TBMOPR.INFO_SQN
+            ,TBMOIM.CNTT_NO_ID
+
+            ,TBMOIM.PUCS_ID
+            ,TBMOIM.PUCS_USIS_ID
+            ,PTBMFIM.BPLC_NM AS PUCS_BPLC_NM
+
+            ,TBMOIM.SELR_ID
+            ,TBMOIM.SELR_USIS_ID
+            ,STBMFIM.BPLC_NM AS SELR_BPLC_NM
+
+            ,TBMPIM.MDLNM
+            ,TBMPIM.AGEN_INF_ID
+            ,CASE WHEN TBMPIM.AGEN_INF_ID IS NULL THEN 'N' ELSE 'Y' END AS AGEN_STATE
+            ,TBMPIM.PDF_STTS_ID
+            ,TBMPIM.PDF_PGRS_YN
+
+            ,TBMOPR.ORDN_PTRN_ID
+            ,TBMOPR.PDF_CTGY_ID
+            ,'{'||TBMCC.TMS1_CLSF_NM||'},{'||TBMCC.TMS2_CLSF_NM||'},{'||TBMCC.TMS3_CLSF_NM||'},{'||TBMCC.TMS4_CLSF_NM||'},{'||TBMCC.TMS5_CLSF_NM||'}' AS PDF_CTGY_DATA
+            ,TBMOPR.PDF_NM
+            ,TBMOPR.QTY
+            ,TBMOPR.PDF_PRC
+            ,TBMOPR.TTAL_AMT
+            ,TBMOPR.DVRY_PTRN_ID
+            ,TBMOPR.DVRY_INFO_ID
+            ,TBMOPR.ORDN_STTS_ID
+            ,TBMOPR.PDF_INFO_ID
+            ,TBMOPR.RGSN_TS
+
+            ,TBMPFR.FILE_ID AS IMG_FILE_ID
+
+            ,TBMOPDR.PCSVCMP_PTRN_ID
+            ,CASE
+                WHEN TBMOPDR.PCSVCMP_PTRN_ID = 'ODS01013' THEN TBMOPDR.PCSVCMP_NM /* 기타(직접입력)(ODS01013) */
+                ELSE (SELECT COM_CD_NM FROM <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D WHERE COM_CD_ID = TBMOPDR.PCSVCMP_PTRN_ID)
+                END AS PCSVCMP_NM
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_ORDER_INF_M TBMOIM
+            INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDF_R TBMOPR ON TBMOPR.ORDN_INFO_ID = TBMOIM.ORDN_INFO_ID
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDVRY_R TBMOPDR ON TBMOPDR.ORDN_INFO_ID = TBMOPR.ORDN_INFO_ID
+                AND TBMOPDR.INFO_SQN = TBMOPR.INFO_SQN
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_FFPC_INF_M STBMFIM ON STBMFIM.UTLINSTT_ID = TBMOIM.SELR_USIS_ID
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_FFPC_INF_M PTBMFIM ON PTBMFIM.UTLINSTT_ID = TBMOIM.PUCS_USIS_ID
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_CTGY_C TBMCC ON TBMCC.CTGY_ID = TBMOPR.PDF_CTGY_ID
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_INF_M TBMPIM ON TBMPIM.PDF_INFO_ID = TBMOPR.PDF_INFO_ID
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_FIE_R TBMPFR ON TBMPFR.PDF_INFO_ID = TBMOPR.PDF_INFO_ID AND TBMPFR.FILE_PTRN_ID = #{filePtrnId} AND TBMPFR.INFO_SQN = 1
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_FILE_ATCH_M TBMFAM ON TBMFAM.FILE_ID = TBMPFR.FILE_ID
+        WHERE 1=1
+            AND TBMOIM.ORDN_INFO_ID = #{ordnInfoId}
+            AND TBMOPR.INFO_SQN = #{infoSqn}
+        <if test='returnType != null and returnType.equals("buyer")'>
+            AND TBMOIM.PUCS_USIS_ID = #{usisId}
+        </if>
+        <if test='returnType != null and returnType.equals("selr")'>
+            AND TBMOIM.SELR_USIS_ID = #{usisId}
+        </if>
+    </select>
+
+    <!-- 반품 목록 가져오기 -->
+    <select id="orderProductReturnList" parameterType="RequestReturnVO" resultType="OrderReturnVO">
+        <include refid="pagingHeader"/>
+        SELECT
+            TBMOIM.ORDN_INFO_ID
+             ,TBMOPR.INFO_SQN
+             ,TBMOIM.CNTT_NO_ID
+
+             ,TBMOIM.PUCS_ID
+             ,TBMOIM.PUCS_USIS_ID
+             ,PTBMFIM.BPLC_NM AS PUCS_BPLC_NM
+
+             ,TBMOIM.SELR_ID
+             ,TBMOIM.SELR_USIS_ID
+             ,STBMFIM.BPLC_NM AS SELR_BPLC_NM
+
+             ,TBMOPR.ORDN_PTRN_ID
+             ,TBMOPR.PDF_CTGY_ID
+             ,'{'||TBMCC.TMS1_CLSF_NM||'},{'||TBMCC.TMS2_CLSF_NM||'},{'||TBMCC.TMS3_CLSF_NM||'},{'||TBMCC.TMS4_CLSF_NM||'},{'||TBMCC.TMS5_CLSF_NM||'}' AS PDF_CTGY_DATA
+             ,TBMOPR.PDF_NM
+
+             ,TBMPIM.MDLNM
+             ,TBMPIM.AGEN_INF_ID
+             ,CASE WHEN TBMPIM.AGEN_INF_ID IS NULL THEN 'N' ELSE 'Y' END AS AGEN_STATE
+             ,TBMPIM.PDF_STTS_ID
+             ,TBMPIM.PDF_PGRS_YN
+
+             ,TBMOPR.QTY
+             ,TBMOPR.PDF_PRC
+             ,TBMOPR.TTAL_AMT
+             ,TBMOPR.DVRY_PTRN_ID
+             ,TBMOPR.DVRY_INFO_ID
+             ,TBMOPR.ORDN_STTS_ID
+             ,TBMOPR.PDF_INFO_ID
+             ,TBMOPR.RGSN_TS
+             ,TO_CHAR(TBMOPR.RGSN_TS, 'YYYY-MM-DD HH24:MI:SS') AS RGSN_TS_STR
+             ,TBMOPR.AMNN_TS
+
+             ,TBMPFR.FILE_ID AS IMG_FILE_ID
+
+             ,TBMOPDR.PCSVCMP_PTRN_ID
+             ,CASE
+                WHEN TBMOPDR.PCSVCMP_PTRN_ID = 'ODS01013' THEN TBMOPDR.PCSVCMP_NM /* 기타(직접입력)(ODS01013) */
+                ELSE (SELECT COM_CD_NM FROM <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D WHERE COM_CD_ID = TBMOPDR.PCSVCMP_PTRN_ID)
+                END AS PCSVCMP_NM
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDF_R TBMOPR
+            INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_ORDER_INF_M TBMOIM ON TBMOIM.ORDN_INFO_ID = TBMOPR.ORDN_INFO_ID
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDVRY_R TBMOPDR ON TBMOPDR.ORDN_INFO_ID = TBMOPR.ORDN_INFO_ID
+                AND TBMOPDR.INFO_SQN = TBMOPR.INFO_SQN
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_FFPC_INF_M STBMFIM ON STBMFIM.UTLINSTT_ID = TBMOIM.SELR_USIS_ID
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_FFPC_INF_M PTBMFIM ON PTBMFIM.UTLINSTT_ID = TBMOIM.PUCS_USIS_ID
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_CTGY_C TBMCC ON TBMCC.CTGY_ID = TBMOPR.PDF_CTGY_ID
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_INF_M TBMPIM ON TBMPIM.PDF_INFO_ID = TBMOPR.PDF_INFO_ID
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_FIE_R TBMPFR ON TBMPFR.PDF_INFO_ID = TBMOPR.PDF_INFO_ID AND TBMPFR.FILE_PTRN_ID = #{filePtrnId} AND TBMPFR.INFO_SQN = 1
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_FILE_ATCH_M TBMFAM ON TBMFAM.FILE_ID = TBMPFR.FILE_ID
+        WHERE 1=1
+        <if test='returnType != null and returnType.equals("buyer")'>
+            AND TBMOIM.PUCS_USIS_ID = #{usisId}
+        </if>
+        <if test='returnType != null and returnType.equals("selr")'>
+            AND TBMOIM.SELR_USIS_ID = #{usisId}
+        </if>
+        <if test='ordnSttsId != null and ordnSttsId.equals("")'>
+          AND TBMOPR.ORDN_STTS_ID IN('ODS00005','ODS00006','ODS00007')  /*반품요청 ODS00005,반품불가 ODS00006,반품완료 ODS00007*/
+        </if>
+        <if test='ordnSttsId != null and !ordnSttsId.equals("")'>
+            AND TBMOPR.ORDN_STTS_ID = #{ordnSttsId}
+        </if>
+        ORDER BY TBMOPR.RGSN_TS DESC
+        <include refid="pagingFooter"/>
+    </select>
+
+
+    <!-- 반품목록 합계 -->
+    <select id="returnListsTotal" parameterType="RequestReturnVO" resultType="integer">
+        SELECT
+            count(*)
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDF_R TBMOPR
+            INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_ORDER_INF_M TBMOIM ON TBMOIM.ORDN_INFO_ID = TBMOPR.ORDN_INFO_ID
+        WHERE 1=1
+            AND TBMOPR.ORDN_STTS_ID IN('ODS00005','ODS00006','ODS00007')
+        <if test='returnType != null and returnType.equals("buyer")'>
+            AND TBMOIM.PUCS_USIS_ID = #{usisId}
+        </if>
+        <if test='returnType != null and returnType.equals("selr")'>
+            AND TBMOIM.SELR_USIS_ID = #{usisId}
+        </if>
+    </select>
+</mapper>

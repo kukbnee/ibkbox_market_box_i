@@ -1,0 +1,569 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ibk.sb.restapi.biz.service.delivery.repo.DeliveryRepo">
+
+    <sql id="MARKET"><include refid="com.ibk.sb.restapi.biz.service.common.repo.SchemaRepo.MARKET"/></sql>
+
+    <!--    PagingMapper ID-->
+    <sql id="pagingHeader"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageHeader"/></sql>
+    <sql id="pagingFooter"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageFooter"/></sql>
+
+    <!--    상품 배송 정보 조회 -->
+    <select id="selectDeliveryInfo" parameterType="string" resultType="DeliveryinfoVO">
+        SELECT
+            TBMPDL.PDF_INFO_ID
+
+            , TBMPDL.DVRY_TYPE_ID
+            , TBMCCDDTI.COM_CD_NM AS DVRY_TYPE_NAME
+
+            , TBMPDL.DVRY_PTRN_ID
+            , TBMCCDDPI.COM_CD_NM AS DVRY_PTRN_NAME
+
+            , TBMPDL.DVRYNONE_PTRN_ID
+            , TBMCCDDNPY.COM_CD_NM AS DVRYNONE_PTRN_NAME
+
+            , TBMPDL.ENTP_INFO_ID
+            , '' AS ENTP_INFO_NAME
+
+            , TBMPDL.DVRY_BSCPRCE
+            , TBMPDL.RGSN_USER_ID
+            , TBMPDL.RGSN_TS
+            , TBMPDL.AMNN_USER_ID
+            , TBMPDL.AMNN_TS
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_PDF_DEL_L TBMPDL
+
+        LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D TBMCCDDTI ON TBMCCDDTI.COM_CD_ID = TBMPDL.DVRY_TYPE_ID
+        LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D TBMCCDDPI ON TBMCCDDPI.COM_CD_ID = TBMPDL.DVRY_PTRN_ID
+        LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D TBMCCDDNPY ON TBMCCDDNPY.COM_CD_ID = TBMPDL.DVRYNONE_PTRN_ID
+
+        WHERE 1 = 1
+            AND TBMPDL.PDF_INFO_ID = #{pdfInfoId}
+    </select>
+
+    <!--    상품 화물서비스 기본 정보 조회   -->
+    <select id="selectDeliveryBaseInfo" parameterType="string" resultType="DeliveryBaseInfoVO">
+        SELECT
+            TBMPDM.PDF_INFO_ID
+            , TBMPDM.FILE_ID
+            , TBMFAM.FILE_NM
+            , TBMPDM.RLONTF_ZPCD
+            , TBMPDM.RLONTF_ADR
+            , TBMPDM.RLONTF_DTAD
+
+            , TBMPDM.PRDTPCKN_UT_ID
+            , TBMCCD.COM_CD_NM AS PRDTPCKN_UT_NAME
+
+            , TBMPDM.DCH_GDS_PRC
+            , TBMPDM.MXMM_GDS_CNT
+            , TBMPDM.PRDT_BRDH
+            , TBMPDM.PRDT_VRTC
+            , TBMPDM.PRDT_AHGD
+            , TBMPDM.PRDT_WGT
+            , TBMPDM.RGSN_USER_ID
+            , TBMPDM.RGSN_TS
+            , TBMPDM.AMNN_USER_ID
+            , TBMPDM.AMNN_TS
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_PDF_DVRY_M TBMPDM
+
+        LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D TBMCCD ON TBMCCD.COM_CD_ID = TBMPDM.PRDTPCKN_UT_ID
+        LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_FILE_ATCH_M TBMFAM ON TBMFAM.FILE_ID = TBMPDM.FILE_ID
+
+        WHERE 1 = 1
+            AND TBMPDM.PDF_INFO_ID = #{pdfInfoId}
+    </select>
+
+    <!--    화물서비스 견적 정보 리스트 조회   -->
+    <select id="selectDeliveryProductInfo" parameterType="string" resultType="DeliveryProductServiceInfoVO">
+        SELECT
+            TBMDEM.PDF_INFO_ID
+            , TBMDEM.INFO_SQN
+            , TBMDEM.QTY
+
+            , TBMDEM.COM_PDF_UT_ID
+            , TBMCCDCPUI.COM_CD_NM AS COM_PDF_UT_NAME
+
+            , TBMDEM.ESTT_AMT
+
+            , TBMDEM.COM_PRC_UT_ID
+            , TBMCCDCRUI.COM_CD_NM AS COM_PRC_UT_NAME
+
+            , TBMDEM.RGSN_USER_ID
+            , TBMDEM.RGSN_TS
+            , TBMDEM.AMNN_USER_ID
+            , TBMDEM.AMNN_TS
+
+            , TBMPDL.ENTP_INFO_ID
+            , TBMDIM.ENTP_NM AS ENTP_INFO_NAME
+
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_DVRY_ESTT_M TBMDEM
+
+        LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D TBMCCDCPUI ON TBMCCDCPUI.COM_CD_ID = TBMDEM.COM_PDF_UT_ID
+        LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D TBMCCDCRUI ON TBMCCDCRUI.COM_CD_ID = TBMDEM.COM_PRC_UT_ID
+        LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_DEL_L TBMPDL ON TBMPDL.PDF_INFO_ID = TBMDEM.PDF_INFO_ID
+        LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_DVRY_INF_M TBMDIM ON TBMDIM.ENTP_INFO_ID = TBMPDL.ENTP_INFO_ID
+
+        WHERE 1 = 1
+            AND TBMDEM.PDF_INFO_ID = #{pdfInfoId}
+
+        ORDER BY TBMDEM.INFO_SQN ASC
+    </select>
+
+    <!--    상품 지역별 배송 정보 리스트 조회 -->
+    <select id="selectDeliveryLocalInfo" parameterType="string" resultType="DeliveryLocalInfoVO">
+        SELECT
+            TBMPDM.PDF_INFO_ID
+            , TBMPDM.INFO_SQN
+            , TBMPDM.TRL
+            , TBMPDM.CTCOCRWD
+            , TBMPDM.AMT
+
+            , TBMPDM.COM_PRC_UT_ID
+            , TBMCCD.COM_CD_NM AS COM_PRC_UT_NAME
+
+            , TBMPDM.RGSN_USER_ID
+            , TBMPDM.RGSN_TS
+            , TBMPDM.AMNN_USER_ID
+            , TBMPDM.AMNN_TS
+
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_PEAR_DVRY_M TBMPDM
+
+        LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D TBMCCD ON TBMCCD.COM_CD_ID = TBMPDM.COM_PRC_UT_ID
+
+        WHERE 1 = 1
+        AND TBMPDM.PDF_INFO_ID = #{pdfInfoId}
+
+        ORDER BY TBMPDM.INFO_SQN ASC
+    </select>
+
+    <!--    상품 수량별 배송 정보 리스트 조화 -->
+    <select id="selectDeliveryCntInfo" parameterType="string" resultType="DeliveryCntInfoVO">
+        SELECT
+            TBMQDM.PDF_INFO_ID
+            , TBMQDM.INFO_SQN
+            , TBMQDM.QTY
+
+            , TBMQDM.COM_PDF_UT_ID
+            , TBMCCDCPUI.COM_CD_NM AS COM_PDF_UT_NAME
+
+            , TBMQDM.AMT
+
+            , TBMQDM.COM_PRC_UT_ID
+            , TBMCCDCRUI.COM_CD_NM AS COM_PRC_UT_NAME
+
+            , TBMQDM.RGSN_USER_ID
+            , TBMQDM.RGSN_TS
+            , TBMQDM.AMNN_USER_ID
+            , TBMQDM.AMNN_TS
+
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_QTY_DVRY_M TBMQDM
+
+        LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D TBMCCDCPUI ON TBMCCDCPUI.COM_CD_ID = TBMQDM.COM_PDF_UT_ID
+        LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D TBMCCDCRUI ON TBMCCDCRUI.COM_CD_ID = TBMQDM.COM_PRC_UT_ID
+
+        WHERE 1 = 1
+            AND TBMQDM.PDF_INFO_ID = #{pdfInfoId}
+
+        ORDER BY TBMQDM.INFO_SQN ASC
+    </select>
+
+    <!--    상품 배송 정보 등록 -->
+    <insert id="insertDeliveryinfo" parameterType="DeliveryinfoVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_PDF_DEL_L
+        (
+            PDF_INFO_ID
+            , DVRY_TYPE_ID
+            , DVRY_PTRN_ID
+            , DVRYNONE_PTRN_ID
+            , ENTP_INFO_ID
+            , DVRY_BSCPRCE
+            , RGSN_USER_ID
+            , RGSN_TS
+            , AMNN_USER_ID
+            , AMNN_TS
+        )
+        VALUES
+        (
+            #{pdfInfoId}
+            , #{dvryTypeId}
+            , #{dvryPtrnId}
+            , #{dvrynonePtrnId}
+            , #{entpInfoId}
+            , #{dvryBscprce}
+            , #{rgsnUserId}
+            , CURRENT_TIMESTAMP
+            , #{amnnUserId}
+            , CURRENT_TIMESTAMP
+        )
+    </insert>
+
+    <!--    상품 배송 정보 수정 -->
+    <update id="updateDeliveryinfo" parameterType="DeliveryinfoVO">
+        UPDATE
+            <include refid="MARKET"/>TB_BOX_MKT_PDF_DEL_L
+        SET
+            DVRY_TYPE_ID          = #{dvryTypeId}
+            , DVRY_PTRN_ID          = #{dvryPtrnId}
+            , DVRYNONE_PTRN_ID      = #{dvrynonePtrnId}
+            , ENTP_INFO_ID          = #{entpInfoId}
+            , DVRY_BSCPRCE          = #{dvryBscprce}
+            , AMNN_USER_ID          = #{amnnUserId}
+            , AMNN_TS               = CURRENT_TIMESTAMP
+        WHERE 1 = 1
+            AND PDF_INFO_ID = #{pdfInfoId}
+    </update>
+
+    <!--    상품 배송 정보 수정(화물서비스 업체 ID) -->
+    <update id="updateDeliveryinfoForEntpInfoId" parameterType="DeliveryinfoVO">
+        UPDATE
+            <include refid="MARKET"/>TB_BOX_MKT_PDF_DEL_L
+        SET
+            ENTP_INFO_ID          = #{entpInfoId}
+        WHERE 1 = 1
+            AND PDF_INFO_ID = #{pdfInfoId}
+    </update>
+
+    <!--    상품 화물서비스 기본 정보  -->
+    <insert id="insertDeliveryBaseInfo" parameterType="DeliveryBaseInfoVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_PDF_DVRY_M
+        (
+            PDF_INFO_ID
+            , FILE_ID
+            , RLONTF_ZPCD
+            , RLONTF_ADR
+            , RLONTF_DTAD
+            , PRDTPCKN_UT_ID
+            , DCH_GDS_PRC
+            , MXMM_GDS_CNT
+            , PRDT_BRDH
+            , PRDT_VRTC
+            , PRDT_AHGD
+            , PRDT_WGT
+            , RGSN_USER_ID
+            , RGSN_TS
+            , AMNN_USER_ID
+            , AMNN_TS
+        )
+        VALUES
+        (
+            #{pdfInfoId}
+            , #{fileId}
+            , #{rlontfZpcd}
+            , #{rlontfAdr}
+            , #{rlontfDtad}
+            , #{prdtpcknUtId}
+            , #{dchGdsPrc}
+            , #{mxmmGdsCnt}
+            , #{prdtBrdh}
+            , #{prdtVrtc}
+            , #{prdtAhgd}
+            , #{prdtWgt}
+            , #{rgsnUserId}
+            , CURRENT_TIMESTAMP
+            , #{amnnUserId}
+            , CURRENT_TIMESTAMP
+        )
+    </insert>
+
+    <!--    상품 화물서비스 기본 정보 수정   -->
+    <update id="updateDeliveryBaseInfo" parameterType="DeliveryBaseInfoVO">
+        UPDATE
+            <include refid="MARKET"/>TB_BOX_MKT_PDF_DVRY_M
+        SET
+            FILE_ID            = #{fileId}
+            , RLONTF_ZPCD        = #{rlontfZpcd}
+            , RLONTF_ADR         = #{rlontfAdr}
+            , RLONTF_DTAD        = #{rlontfDtad}
+            , PRDTPCKN_UT_ID     = #{prdtpcknUtId}
+            , DCH_GDS_PRC        = #{dchGdsPrc}
+            , MXMM_GDS_CNT        = #{mxmmGdsCnt}
+            , PRDT_BRDH          = #{prdtBrdh}
+            , PRDT_VRTC          = #{prdtVrtc}
+            , PRDT_AHGD          = #{prdtAhgd}
+            , PRDT_WGT           = #{prdtWgt}
+            , AMNN_USER_ID       = #{amnnUserId}
+            , AMNN_TS            = CURRENT_TIMESTAMP
+        WHERE 1 = 1
+            AND PDF_INFO_ID = #{pdfInfoId}
+    </update>
+
+    <!--    상품 화물서비스 견적 정보  -->
+    <insert id="insertDeliveryProductServiceInfo" parameterType="DeliveryProductServiceInfoVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_DVRY_ESTT_M
+        (
+            PDF_INFO_ID
+            , INFO_SQN
+            , ENTP_INFO_ID
+            , QTY
+            , COM_PDF_UT_ID
+            , ESTT_AMT
+            , COM_PRC_UT_ID
+            , RGSN_USER_ID
+            , RGSN_TS
+            , AMNN_USER_ID
+            , AMNN_TS
+        )
+        VALUES
+        (
+            #{pdfInfoId}
+            , (
+                SELECT CASE WHEN MAX(INFO_SQN) IS NULL THEN 1 ELSE MAX(INFO_SQN) + 1 END
+                FROM <include refid="MARKET"/>TB_BOX_MKT_DVRY_ESTT_M
+                WHERE PDF_INFO_ID = #{pdfInfoId}
+            )
+            , #{entpInfoId}
+            , #{qty}
+            , #{comPdfUtId}
+            , #{esttAmt}
+            , #{comPrcUtId}
+            , #{rgsnUserId}
+            , CURRENT_TIMESTAMP
+            , #{amnnUserId}
+            , CURRENT_TIMESTAMP
+        )
+    </insert>
+
+    <!--    상품 화물서비스 견적 정보 삭제  -->
+    <delete id="deleteDeliveryProductServiceInfo" parameterType="string">
+        DELETE <include refid="MARKET"/>TB_BOX_MKT_DVRY_ESTT_M
+        WHERE PDF_INFO_ID = #{pdfInfoId}
+    </delete>
+
+    <!--    지역별 배송비 정보 등록   -->
+    <insert id="insertDeliveryLocalInfo" parameterType="DeliveryLocalInfoVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_PEAR_DVRY_M
+        (
+            PDF_INFO_ID
+            , INFO_SQN
+            , TRL
+            , CTCOCRWD
+            , AMT
+            , COM_PRC_UT_ID
+            , RGSN_USER_ID
+            , RGSN_TS
+            , AMNN_USER_ID
+            , AMNN_TS
+
+        )
+        VALUES
+        (
+            #{pdfInfoId}
+            , (
+                SELECT CASE WHEN MAX(INFO_SQN) IS NULL THEN 1 ELSE MAX(INFO_SQN) + 1 END
+                FROM <include refid="MARKET"/>TB_BOX_MKT_PEAR_DVRY_M
+                WHERE PDF_INFO_ID = #{pdfInfoId}
+            )
+            , #{trl}
+            , #{ctcocrwd}
+            , #{amt}
+            , #{comPrcUtId}
+            , #{rgsnUserId}
+            , CURRENT_TIMESTAMP
+            , #{amnnUserId}
+            , CURRENT_TIMESTAMP
+        )
+    </insert>
+
+    <!--    지역별 배송비 정보 삭제   -->
+    <delete id="deleteDeliveryLocalInfo" parameterType="string">
+        DELETE <include refid="MARKET"/>TB_BOX_MKT_PEAR_DVRY_M
+        WHERE PDF_INFO_ID = #{pdfInfoId}
+    </delete>
+
+    <!--    수량별 배송비 정보 등록   -->
+    <insert id="insertDeliveryCntInfo" parameterType="DeliveryCntInfoVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_QTY_DVRY_M
+        (
+            PDF_INFO_ID
+            , INFO_SQN
+            , QTY
+            , COM_PDF_UT_ID
+            , AMT
+            , COM_PRC_UT_ID
+            , RGSN_USER_ID
+            , RGSN_TS
+            , AMNN_USER_ID
+            , AMNN_TS
+        )
+        VALUES
+        (
+            #{pdfInfoId}
+            , (
+                SELECT CASE WHEN MAX(INFO_SQN) IS NULL THEN 1 ELSE MAX(INFO_SQN) + 1 END
+                FROM <include refid="MARKET"/>TB_BOX_MKT_QTY_DVRY_M
+                WHERE PDF_INFO_ID = #{pdfInfoId}
+            )
+            , #{qty}
+            , #{comPdfUtId}
+            , #{amt}
+            , #{comPrcUtId}
+            , #{rgsnUserId}
+            , CURRENT_TIMESTAMP
+            , #{amnnUserId}
+            , CURRENT_TIMESTAMP
+        )
+    </insert>
+
+    <!--    수량별 배송비 정보 삭제-->
+    <delete id="deleteDeliveryCntInfo" parameterType="string">
+        DELETE <include refid="MARKET"/>TB_BOX_MKT_QTY_DVRY_M
+        WHERE PDF_INFO_ID = #{pdfInfoId}
+    </delete>
+
+    <!--    주문 화물서비스 배송정보 조회 by 원송장(운송장) 번호 -->
+    <select id="selectDeliveryOrderProductServiceInfoByMainnbNo" parameterType="string" resultType="DeliveryOrderProductServiceInfoVO">
+        SELECT
+            ORDN_INFO_ID
+            , INFO_SQN
+            , TRSPREQS_NO
+            , MAINNB_NO
+            , DVRYNONE
+            , RLONTF_ZPCD
+            , RLONTF_ADR
+            , RLONTF_DTAD
+            , RCAR_NM AS RECV
+            , RCAR_CNPLONE AS RECV_CNPLONE
+            , RECV_CNPLTWO
+            , RECV_ZPCD
+            , RECV_ADR
+            , RECV_DTAD
+            , RGSN_USER_ID
+            , RGSN_TS
+            , AMNN_USER_ID
+            , AMNN_TS
+        FROM <include refid="MARKET"/>TB_BOX_MKT_ORDER_DVRY_R
+        WHERE 1 = 1
+            AND MAINNB_NO = #{mainnbNo}
+    </select>
+
+    <!--    주문 상품 정보 조회 by 주문정보ID, 정보 순번    -->
+    <select id="selectDeliveryOrderProductById" parameterType="string" resultType="DeliveryOrderProductVO">
+        SELECT
+            ORDN_INFO_ID
+            , INFO_SQN
+            , ORDN_PTRN_ID
+            , PDF_CTGY_ID
+            , PDF_NM
+            , QTY
+            , PDF_PRC
+            , TTAL_AMT
+            , DVRY_PTRN_ID
+            , DVRY_INFO_ID
+            , ORDN_STTS_ID
+            , PDF_INFO_ID
+            , RGSN_USER_ID
+            , RGSN_TS
+            , AMNN_USER_ID
+            , AMNN_TS
+        FROM <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDF_R
+        WHERE 1 = 1
+            AND ORDN_INFO_ID = #{ordnInfoId}
+            AND TO_CHAR(INFO_SQN) = #{infoSqn}
+            AND RGSN_USER_ID = #{rgsnUserId}
+    </select>
+
+    <!--    주문 상품 정보 스테이터스 수정   -->
+    <update id="updateDeliveryStatus" parameterType="DeliveryOrderProductVO">
+
+        <selectKey keyProperty="resultAmnnTs" resultType="string" order="AFTER">
+            SELECT TO_CHAR(AMNN_TS, 'YYYY-MM-DD HH24:MI:SS') AS RESULT_AMNN_TS FROM <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDF_R WHERE ORDN_INFO_ID = #{ordnInfoId} AND INFO_SQN = #{infoSqn}
+        </selectKey>
+
+        UPDATE <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDF_R
+        SET
+            ORDN_STTS_ID        = #{ordnSttsId}
+            , AMNN_USER_ID      = #{amnnUserId}
+            , AMNN_TS           = CURRENT_TIMESTAMP
+        WHERE ORDN_INFO_ID = #{ordnInfoId} AND INFO_SQN = #{infoSqn}
+    </update>
+
+    <!--    주문 화물서비스 배송정보 조회    -->
+    <select id="selectDeliveryOrderProductServiceInfo" resultType="DeliveryOrderProductServiceInfoVO">
+        SELECT
+            TBMODR.ORDN_INFO_ID
+            , TBMODR.INFO_SQN
+            , TBMODR.TRSPREQS_NO
+            , TBMODR.MAINNB_NO
+            , TBMODR.DVRYNONE
+            , TBMODR.RLONTF_ZPCD
+            , TBMODR.RLONTF_ADR
+            , TBMODR.RLONTF_DTAD
+            , TBMODR.RCAR_NM        AS RECV
+            , TBMODR.RCAR_CNPLONE   AS RECV_CNPLONE
+            , TBMODR.RECV_CNPLTWO
+            , TBMODR.RECV_ZPCD
+            , TBMODR.RECV_ADR
+            , TBMODR.RECV_DTAD
+            , TBMODR.RGSN_USER_ID
+            , TBMODR.RGSN_TS
+            , TBMODR.AMNN_USER_ID
+            , TBMODR.AMNN_TS
+            , TBMODR.ENTP_INFO_ID
+            , TBMDIM.ENTP_NM
+
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_ORDER_DVRY_R TBMODR
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_DVRY_INF_M TBMDIM ON TBMDIM.ENTP_INFO_ID = TBMODR.ENTP_INFO_ID
+
+        WHERE 1 = 1
+            AND TBMODR.ORDN_INFO_ID = #{ordnInfoId}
+            AND TBMODR.INFO_SQN = #{infoSqn}
+    </select>
+
+    <!--    주문 직접수령 배송정보 조회 -->
+    <select id="selectDeliveryOrderDirectPickUpInfo" resultType="DeliveryOrderDirectPickUpInfoVO">
+        SELECT
+            ORDN_INFO_ID
+            , INFO_SQN
+            , RECV_ZPCD
+            , RECV_ADR
+            , RECV_DTAD
+            , RGSN_USER_ID
+            , RGSN_TS
+            , AMNN_USER_ID
+            , AMNN_TS
+
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_ORDER_UDVR_R
+
+        WHERE 1 = 1
+            AND ORDN_INFO_ID = #{ordnInfoId}
+            AND INFO_SQN = #{infoSqn}
+    </select>
+
+    <!--    주문 구매자 배송정보 -->
+    <select id="selectDeliveryOrderBuyerDeliveryInfo" resultType="DeliveryOrderBuyerDeliveryInfoVO">
+        SELECT
+            TBMOPR.ORDN_INFO_ID
+            , TBMOPR.INFO_SQN
+            , TBMOPR.PCSVCMP_PTRN_ID
+            , TBMOPR.MAINNB_NO
+            , TBMOPR.DVRYNONE
+            , TBMOPR.RCAR_NM        AS RECV
+            , TBMOPR.RCAR_CNPLONE   AS RECV_CNPLONE
+            , TBMOPR.RECV_CNPLTWO
+            , TBMOPR.RECV_ZPCD
+            , TBMOPR.RECV_ADR
+            , TBMOPR.RECV_DTAD
+            , TBMOPR.RGSN_USER_ID
+            , TBMOPR.RGSN_TS
+            , TBMOPR.AMNN_USER_ID
+            , TBMOPR.AMNN_TS
+            , CASE
+                WHEN TBMOPR.PCSVCMP_PTRN_ID = 'ODS01013' THEN TBMOPR.PCSVCMP_NM
+                ELSE (SELECT COM_CD_NM FROM <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D WHERE COM_CD_ID = TBMOPR.PCSVCMP_PTRN_ID)
+                END AS PCSVCMP_NM
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDVRY_R TBMOPR
+
+        WHERE 1 = 1
+            AND TBMOPR.ORDN_INFO_ID = #{ordnInfoId}
+            AND TBMOPR.INFO_SQN = #{infoSqn}
+    </select>
+
+</mapper>

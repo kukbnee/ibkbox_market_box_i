@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ibk.sb.restapi.biz.service.patent.repo.PatentRepo">
+
+    <sql id="MARKET"><include refid="com.ibk.sb.restapi.biz.service.common.repo.SchemaRepo.MARKET"/></sql>
+
+    <!--    PagingMapper ID-->
+    <sql id="pagingHeader"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageHeader"/></sql>
+    <sql id="pagingFooter"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageFooter"/></sql>
+
+    <!--    상품 리스트 조회  -->
+    <select id="searchPatentList" parameterType="string" resultType="PatentVO">
+        SELECT
+            PDF_INFO_ID
+            , INFO_SQN
+            , PTNT_NM
+            , PTNT_IPC
+            , PTNT_STTS
+            , PTNT_ALFR_NO
+            , PTNT_ALFR_TS
+            , PTNT_RTN
+            , PTNT_TS
+            , PTNT_RLOCAUS
+            , RGSN_USER_ID
+            , RGSN_TS
+            , AMNN_USER_ID
+            , AMNN_TS
+            , 'Y' AS CHECKED
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_PDF_PAT_R
+        WHERE
+            1 = 1
+            AND PDF_INFO_ID = #{pdfInfoId}
+        ORDER BY INFO_SQN ASC
+    </select>
+
+    <!--    상품 특허 정보 등록 -->
+    <insert id="insertPatent" parameterType="PatentVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_PDF_PAT_R
+        (
+            PDF_INFO_ID
+            , INFO_SQN
+            , PTNT_NM
+            , PTNT_IPC
+            , PTNT_STTS
+            , PTNT_ALFR_NO
+            , PTNT_ALFR_TS
+            , PTNT_RTN
+            , PTNT_TS
+            , PTNT_RLOCAUS
+            , RGSN_USER_ID
+            , RGSN_TS
+            , AMNN_USER_ID
+            , AMNN_TS
+        )
+        VALUES
+        (
+            #{pdfInfoId}
+            , (
+                SELECT CASE WHEN MAX(INFO_SQN) IS NULL THEN 1 ELSE MAX(INFO_SQN) + 1 END
+                FROM <include refid="MARKET"/>TB_BOX_MKT_PDF_PAT_R
+                WHERE PDF_INFO_ID = #{pdfInfoId}
+            )
+            , #{ptntNm}
+            , #{ptntIpc}
+            , #{ptntStts}
+            , #{ptntAlfrNo}
+            , #{ptntAlfrTs}
+            , #{ptntRtn}
+            , #{ptntTs}
+            , #{ptntRlocaus}
+            , #{rgsnUserId}
+            , CURRENT_TIMESTAMP
+            , #{amnnUserId}
+            , CURRENT_TIMESTAMP
+        )
+    </insert>
+
+    <!--    상품 특허 정보 삭제 -->
+    <delete id="deletePatent" parameterType="string">
+        DELETE FROM <include refid="MARKET"/>TB_BOX_MKT_PDF_PAT_R
+        WHERE PDF_INFO_ID = #{pdfInfoId}
+    </delete>
+
+</mapper>

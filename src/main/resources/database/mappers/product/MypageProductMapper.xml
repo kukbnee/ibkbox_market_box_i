@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ibk.sb.restapi.biz.service.product.mypage.repo.MyProductRepo">
+
+    <sql id="MARKET"><include refid="com.ibk.sb.restapi.biz.service.common.repo.SchemaRepo.MARKET"/></sql>
+
+    <!--    PagingMapper ID-->
+    <sql id="pagingHeader"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageHeader"/></sql>
+    <sql id="pagingFooter"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageFooter"/></sql>
+
+    <!--    마이페이지 상품관리 개별상품 리스트 조회  -->
+    <select id="selectMySingleProductList" parameterType="RequestSearchMyProductVO" resultType="SummaryMySingleProductVO">
+        <include refid="pagingHeader"/>
+            SELECT
+                TBMPIM.PDF_INFO_ID
+                , TBMPIM.SELR_USIS_ID
+
+                , TBMPIM.PDF_CTGY_ID
+                , TBMCC.TMS5_CLSF_NM AS PDF_CTGY_NAME
+
+                , TBMPIM.PDF_PGRS_YN
+
+                , TBMPIM.PDF_STTS_ID
+                , TBMCCDD.COM_CD_NM AS PDF_STTS_NAME
+
+                , TBMPIM.PDF_NM
+                , TBMPIM.AGEN_INF_ID
+
+                , TBMPSL.PDF_PRC
+                , TBMPSL.SALE_PRC
+                , TBMPSL.PRC_DSCS_YN
+                , TBMPSL.ESTT_USE_EN
+
+                , TBMPSL.COM_PRCUT_ID
+                , TBMCCD.COM_CD_NM AS COM_PRCUT_NAME
+
+                , TBMPSL.ORDN_QTY_LMTN_USYN
+                , TBMPSL.ORDN_MNMM_QTY
+                , TBMPSL.ORDN_MXMM_QTY_YN
+                , TBMPSL.ORDN_MXMM_QTY
+
+                , TBMPFR.FILE_ID AS IMG_FILE_ID
+
+                , TBMPIM.RGSN_TS
+                , TBMPIM.AMNN_TS
+
+            FROM <include refid="MARKET"/>TB_BOX_MKT_PDF_INF_M TBMPIM
+
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_SAL_L TBMPSL ON TBMPSL.PDF_INFO_ID = TBMPIM.PDF_INFO_ID
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D TBMCCD ON TBMCCD.COM_CD_ID = TBMPSL.COM_PRCUT_ID
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D TBMCCDD ON TBMCCDD.COM_CD_ID = TBMPIM.PDF_STTS_ID
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_FIE_R TBMPFR ON TBMPFR.PDF_INFO_ID = TBMPIM.PDF_INFO_ID AND TBMPFR.INFO_SQN = 1 AND FILE_PTRN_ID = #{filePtrnId}
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_CTGY_C TBMCC ON TBMCC.CTGY_ID = TBMPIM.PDF_CTGY_ID
+
+            WHERE 1 = 1
+                AND TBMPIM.DEL_YN = 'N'
+                AND TBMPIM.SELR_USIS_ID = #{loginUtlinsttId}
+            <choose>
+                <when test="orderByFlg != null and orderByFlg.equals('A0')">
+                    ORDER BY TBMPIM.RGSN_TS DESC
+                </when>
+                <when test="orderByFlg != null and orderByFlg.equals('A1')">
+                    ORDER BY TBMPSL.PDF_PRC ASC
+                </when>
+                <when test="orderByFlg != null and orderByFlg.equals('A2')">
+                    ORDER BY TBMPSL.PDF_PRC DESC
+                </when>
+            </choose>
+
+        <include refid="pagingFooter"/>
+    </select>
+
+    <!--    마이페이지 상품관리 번들상품 정보 리스트 조회  -->
+    <select id="selectMyBundleProductInfoList" parameterType="RequestSearchMyProductVO" resultType="SummaryMyBundleProductInfoVO">
+        <include refid="pagingHeader"/>
+            SELECT
+                TBMPBM.BUN_INF_ID
+                , TBMPBM.SELR_USIS_ID
+                , TBMPBM.FILE_ID AS IMG_FILE_ID
+                , TBMPBM.PDF_NM
+                , TBMPBM.PDF_CON
+                , TBMPBM.MAIN_YN
+                , TBMPBM.DEL_YN
+                , TBMPBM.RGSN_TS
+                , TBMPBM.AMNN_TS
+                , TBMPBL.PDF_CNT
+                , TBMPBL.PDF_CTGY_NAME
+
+            FROM <include refid="MARKET"/>TB_BOX_MKT_PDF_BUN_M TBMPBM
+
+            LEFT JOIN (
+                SELECT
+                    SUM(1) AS PDF_CNT
+                    , TBMPBL.BUN_INF_ID
+                    <!--, WM_CONCAT(CNRN_FILD_NM) AS CNRN_TAGS -->
+                    , AGGR_CONCAT(TBMCC.TMS5_CLSF_NM, ',') AS PDF_CTGY_NAME
+                FROM <include refid="MARKET"/>TB_BOX_MKT_PDF_BUN_L TBMPBL
+                LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_INF_M TBMPIM ON TBMPIM.PDF_INFO_ID = TBMPBL.PDF_INFO_ID
+                LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_CTGY_C TBMCC ON TBMCC.CTGY_ID = TBMPIM.PDF_CTGY_ID
+                GROUP BY TBMPBL.BUN_INF_ID
+            ) TBMPBL ON TBMPBL.BUN_INF_ID = TBMPBM.BUN_INF_ID
+
+            WHERE 1 = 1
+                AND TBMPBM.DEL_YN = 'N'
+                AND TBMPBM.SELR_USIS_ID = #{loginUtlinsttId}
+
+            ORDER BY TBMPBM.AMNN_TS DESC
+
+        <include refid="pagingFooter"/>
+    </select>
+
+    <!--    마이페이지 상품관리 바이어 상품 리스트 조회    -->
+    <select id="selectMyBuyerProductInfoList" parameterType="RequestSearchMyProductVO" resultType="SummaryMyBuyerProductInfoVO">
+        <include refid="pagingHeader"/>
+            SELECT
+                TBMBIR.BUYER_INF_ID
+                , TBMBIR.SELR_USIS_ID
+                , TBMBIR.FILE_ID
+                , TBMBIR.SEN_EML
+                , TBMBIR.REC_EML
+                , TBMBIR.TTL
+                , TBMBIR.CON
+                , TBMBIR.DEL_YN
+                , TBMBIR.RGSN_USER_ID
+                , TBMBIR.RGSN_TS
+                , TBMBIR.AMNN_USER_ID
+                , TBMBIR.AMNN_TS
+
+                , TBMBPL.PDF_CNT
+
+            FROM
+                <include refid="MARKET"/>TB_BOX_MKT_BUYER_INF_R TBMBIR
+
+            LEFT JOIN (
+                SELECT
+                    SUM(1) AS PDF_CNT
+                    , BUYER_INF_ID
+                FROM <include refid="MARKET"/>TB_BOX_MKT_BUYER_PDF_L
+                GROUP BY BUYER_INF_ID
+            ) TBMBPL ON TBMBPL.BUYER_INF_ID = TBMBIR.BUYER_INF_ID
+
+            WHERE 1 = 1
+                AND TBMBIR.DEL_YN = 'N'
+                <if test="buyerInfId != null and !buyerInfId.equals('')">
+                    AND TBMBIR.BUYER_INF_ID = #{buyerInfId}
+                </if>
+                <if test="loginUtlinsttId != null and !loginUtlinsttId.equals('')">
+                    AND TBMBIR.SELR_USIS_ID = #{loginUtlinsttId}
+                </if>
+
+            ORDER BY TBMBIR.AMNN_TS DESC
+        <include refid="pagingFooter"/>
+    </select>
+
+    <!--    마이페이지 상품관리 묶음상품 상품 리스트 조회   -->
+    <select id="selectMyProductList" parameterType="RequestSearchMyProductVO" resultType="SummaryMyProductVO">
+        SELECT
+            TBMPIM.PDF_INFO_ID
+            , TBMCC.TMS5_CLSF_NM AS PDF_CTGY_NAME
+            , TBMPIM.PDF_NM
+            , TBMPIM.AGEN_INF_ID
+            , TBMPIM.PDF_STTS_ID
+            , (SELECT COM_CD_NM FROM <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D WHERE COM_CD_ID = TBMPIM.PDF_STTS_ID) AS PDF_STTS_NAME
+
+            , TBMPSL.PDF_PRC
+            , TBMPSL.SALE_PRC
+            , TBMPSL.PRC_DSCS_YN
+
+            , TBMPSL.COM_PRCUT_ID
+            , TBMCCD.COM_CD_NM AS COM_PRCUT_NAME
+
+            , TBMPSL.ORDN_QTY_LMTN_USYN
+            , TBMPSL.ORDN_MNMM_QTY
+            , TBMPSL.ORDN_MXMM_QTY_YN
+            , TBMPSL.ORDN_MXMM_QTY
+
+            , TBMPFR.FILE_ID AS IMG_FILE_ID
+            <if test="bunInfId != null and !bunInfId.equals('')">
+                , TBMPBL.MAIN_YN
+            </if>
+            , TBMPIM.RGSN_TS
+            , TBMPIM.AMNN_TS
+            , TBMPIM.PDF_PGRS_YN
+
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_PDF_INF_M TBMPIM
+
+        LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_CTGY_C TBMCC ON TBMCC.CTGY_ID = TBMPIM.PDF_CTGY_ID
+        LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_SAL_L TBMPSL ON TBMPSL.PDF_INFO_ID = TBMPIM.PDF_INFO_ID
+        LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D TBMCCD ON TBMCCD.COM_CD_ID = TBMPSL.COM_PRCUT_ID
+        LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_FIE_R TBMPFR ON TBMPFR.PDF_INFO_ID = TBMPIM.PDF_INFO_ID AND TBMPFR.INFO_SQN = 1 AND FILE_PTRN_ID = #{filePtrnId}
+        <if test="bunInfId != null and !bunInfId.equals('')">
+            INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_BUN_L TBMPBL ON TBMPBL.PDF_INFO_ID = TBMPIM.PDF_INFO_ID AND TBMPBL.BUN_INF_ID = #{bunInfId}
+        </if>
+
+        <if test="buyerInfId != null and !buyerInfId.equals('')">
+            INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_BUYER_PDF_L TBMBPL ON TBMBPL.PDF_INFO_ID = TBMPIM.PDF_INFO_ID AND TBMBPL.BUYER_INF_ID = #{buyerInfId}
+        </if>
+
+        WHERE 1 = 1
+            AND TBMPIM.DEL_YN = 'N'
+            <if test="pdfPgrsYnFlg != null and pdfPgrsYnFlg.equals('use')">
+                AND TBMPIM.PDF_PGRS_YN = 'Y' /* 진열함 */
+            </if>
+            <if test="loginUtlinsttId != null and !loginUtlinsttId.equals('')">
+                AND TBMPIM.SELR_USIS_ID = #{loginUtlinsttId}
+            </if>
+            <if test="pdfInfoCon != null and !pdfInfoCon.equals('')">
+                AND TBMPIM.PDF_NM LIKE '%' || #{pdfInfoCon} || '%'
+            </if>
+    </select>
+
+
+</mapper>

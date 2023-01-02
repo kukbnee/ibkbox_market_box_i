@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ibk.sb.restapi.biz.service.product.bundle.repo.BundleInfoRepo">
+
+    <sql id="MARKET"><include refid="com.ibk.sb.restapi.biz.service.common.repo.SchemaRepo.MARKET"/></sql>
+
+
+    <!--    PagingMapper ID-->
+    <sql id="pagingHeader"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageHeader"/></sql>
+    <sql id="pagingFooter"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageFooter"/></sql>
+
+    <!--    묶음 상품 정보 리스트 조회 -->
+    <select id="selectBundleInfoList" parameterType="RequestSearchProductVO" resultType="SummaryBundleInfoVO">
+        <include refid="pagingHeader"/>
+            SELECT
+                TBMPBM.BUN_INF_ID
+                , TBMPBM.SELR_USIS_ID
+                , TBMFIM.BPLC_NM AS SELR_USIS_NAME
+                , TBMPBM.PDF_NM
+                , TBMPBM.PDF_CON
+                , TBMPBM.FILE_ID AS IMG_FILE_ID
+                , NVL(VIEWCNT.VIEW_CNT, 0) AS VIEW_CNT
+                , '>>>' || #{mainPageFlg}
+            FROM <include refid="MARKET"/>TB_BOX_MKT_PDF_BUN_M TBMPBM
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_FFPC_INF_M TBMFIM ON TBMFIM.UTLINSTT_ID = TBMPBM.SELR_USIS_ID
+            LEFT JOIN (
+                SELECT
+                    BUN_INF_ID ,SUM(1) AS VIEW_CNT
+                FROM <include refid="MARKET"/>TB_BOX_MKT_PDF_BUN_H
+                WHERE 1 = 1
+                    <if test="popularFlg != null and !popularFlg.equals('')">
+                        AND CAST(RGSN_TS AS DATE) BETWEEN ADD_MONTHS(SYSDATE,-1) AND SYSDATE
+                    </if>
+                GROUP BY BUN_INF_ID
+            ) VIEWCNT ON VIEWCNT.BUN_INF_ID = TBMPBM.BUN_INF_ID
+            WHERE 1 = 1
+                AND TBMPBM.DEL_YN = 'N'
+                <if test="selrUsisId != null and !selrUsisId.equals('')">
+                    AND TBMPBM.SELR_USIS_ID = #{selrUsisId}
+                </if>
+                <if test="pdfInfoCon != null and !pdfInfoCon.equals('')">
+                    AND
+                    (
+                        LOWER(TBMPBM.PDF_NM) LIKE '%' || LOWER(#{pdfInfoCon}) || '%'
+                        OR LOWER(TBMPBM.PDF_CON) LIKE '%' || LOWER(#{pdfInfoCon}) || '%'
+                        OR LOWER(TBMFIM.BPLC_NM) LIKE '%' || LOWER(#{pdfInfoCon}) || '%'
+                    )
+                </if>
+                <if test="mainPageFlg != null and mainPageFlg.equals('main')">
+                    AND TBMPBM.MAIN_YN = 'Y'
+                </if>
+            <choose>
+                <when test="orderByDate != null and !orderByDate.equals('')">
+                    ORDER BY TBMPBM.AMNN_TS DESC
+                </when>
+                <when test="popularFlg != null and !popularFlg.equals('')">
+                    ORDER BY NVL(VIEWCNT.VIEW_CNT, 0) DESC
+                </when>
+            </choose>
+        <include refid="pagingFooter"/>
+    </select>
+
+    <!--    묶음 제품 정보 상세 조회  -->
+    <select id="selectBundleProductInfo" parameterType="string" resultType="BundleProductInfoVO">
+        SELECT
+            TBMPBM.BUN_INF_ID
+            , TBMPBM.SELR_USIS_ID
+            , TBMFIM.BPLC_NM AS SELR_USIS_NAME
+
+            , TBMPBM.FILE_ID
+            , TBMFAM.FILE_NM
+
+            , TBMPBM.PDF_NM
+            , TBMPBM.PDF_CON
+            , TBMPBM.MAIN_YN
+            , TBMPBM.DEL_YN
+            , TBMPBM.RGSN_TS
+            , TBMPBM.RGSN_USER_ID
+            , TBMPBM.AMNN_TS
+            , TBMPBM.AMNN_USER_ID
+
+        FROM <include refid="MARKET"/>TB_BOX_MKT_PDF_BUN_M TBMPBM
+
+        LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_FFPC_INF_M TBMFIM ON TBMFIM.UTLINSTT_ID = TBMPBM.SELR_USIS_ID
+        LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_FILE_ATCH_M TBMFAM ON TBMFAM.FILE_ID = TBMPBM.FILE_ID
+
+        WHERE
+            1 = 1
+            AND TBMPBM.BUN_INF_ID = #{bunInfId}
+    </select>
+
+    <!--    묶음 제품 정보 상세 조회이력 추가  -->
+    <insert id="insertBundleProductViewHistory" parameterType="string">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_PDF_BUN_H(
+            BUN_INF_ID
+            ,MDPH_SQN
+            ,INQ_USIS_ID
+            ,INQ_USER_ID
+            ,INQ_TS
+            ,RGSN_USER_ID
+            ,RGSN_TS
+        ) SELECT
+            #{bunInfId}
+            ,(NVL(MAX(MDPH_SQN),0) + 1)
+            ,#{loginUsisId}
+            ,#{loginUserId}
+            ,SYSDATE
+            ,#{loginUserId}
+            ,CURRENT_TIMESTAMP
+        FROM <include refid="MARKET"/>TB_BOX_MKT_PDF_BUN_H WHERE BUN_INF_ID = #{bunInfId}
+    </insert>
+
+    <!--    마이페이지 상품관리 묶음상품 삭제  -->
+    <update id="deleteBundleProductInfo" parameterType="BundleProductInfoVO">
+        UPDATE <include refid="MARKET"/>TB_BOX_MKT_PDF_BUN_M
+        SET
+          DEL_YN            = 'Y'
+          ,AMNN_TS          = CURRENT_TIMESTAMP
+          ,AMNN_USER_ID     = #{amnnUserId}
+        WHERE
+            BUN_INF_ID      = #{bunInfId}
+    </update>
+
+<!--    <insert id="insertBundleProductInfo" parameterType="BundleProductInfoVO">-->
+<!--        INSERT INTO IBKMKTUSER.TB_BOX_MKT_GDS_BUN_INF_R-->
+<!--        (-->
+<!--            UTLINSTT_ID-->
+<!--                ,BUN_INF_ID-->
+<!--                ,BUN_TTL-->
+<!--                ,BUN_CON-->
+<!--                ,DEL_YN-->
+<!--                ,RGSN_TS-->
+<!--                ,RGSN_USER_ID-->
+<!--                ,AMNN_TS-->
+<!--                ,AMNN_USER_ID-->
+<!--        )-->
+<!--        VALUES-->
+<!--        (-->
+<!--            #{utlinsttId}-->
+<!--                , #{bunInfId}-->
+<!--                , #{bunTtl}-->
+<!--                , #{bunCon}-->
+<!--                , #{delYn}-->
+<!--                , CURRENT_TIMESTAMP-->
+<!--                , #{rgsnUserId}-->
+<!--                , CURRENT_TIMESTAMP-->
+<!--                , #{amnnUserId}-->
+<!--        )-->
+<!--    </insert>-->
+
+<!--    <update id="updateBundleProductInfo" parameterType="BundleProductInfoVO">-->
+<!--        UPDATE-->
+<!--            IBKMKTUSER.TB_BOX_MKT_GDS_BUN_INF_R-->
+<!--        SET-->
+<!--            UTLINSTT_ID     = #{utlinsttId}-->
+<!--              ,BUN_INF_ID   = #{bunInfId}-->
+<!--              ,BUN_TTL     = #{bunTtl}-->
+<!--              ,BUN_CON     = #{bunCon}-->
+<!--              ,DEL_YN     = #{delYn}-->
+<!--              ,AMNN_TS     = CURRENT_TIMESTAMP-->
+<!--              ,AMNN_USER_ID = #{amnnUserId}-->
+<!--        WHERE-->
+<!--            BUN_INF_ID = #{bunInfId}-->
+<!--    </update>-->
+
+<!--    <delete id="deleteBundleProductInfo" parameterType="String">-->
+<!--        DELETE FROM IBKMKTUSER.TB_BOX_MKT_GDS_BUN_INF_R-->
+<!--        WHERE BUN_INF_ID = #{bunInfId}-->
+<!--    </delete>-->
+
+</mapper>

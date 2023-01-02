@@ -1,0 +1,437 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ibk.sb.restapi.biz.service.agency.repo.AgencyRepo">
+
+    <sql id="MARKET"><include refid="com.ibk.sb.restapi.biz.service.common.repo.SchemaRepo.MARKET"/></sql>
+
+    <!--    PagingMapper ID-->
+    <sql id="pagingHeader"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageHeader"/></sql>
+    <sql id="pagingFooter"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageFooter"/></sql>
+
+    <!-- 에이전시 요청 가능상품여부 확인 -->
+    <select id="checkAgencyInfProduct" parameterType="RequestSearchAgencyVO" resultType="Integer">
+        SELECT
+            *
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_PDF_INF_M TBMPIM
+            INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_SELR_INF_M TBMSIM ON TBMSIM.SELR_USIS_ID = TBMPIM.SELR_USIS_ID AND TBMSIM.MMBRSTTS_ID = 'AUA01001' AND TBMSIM.MMBRTYPE_ID IN('SRS00002', 'SRS00003') /*판매자정보가 있고, 승인이면서, 정회원 혹은 에이전시 인경우*/
+        WHERE 1=1
+          AND TBMPIM.PDF_INFO_ID = #{pdfId}
+          AND TBMPIM.PDF_STTS_ID = #{pdfSttsId} /*판매중*/
+          AND TBMPIM.PDF_PGRS_YN = #{pdfPgrsYn} /*진열중*/
+          AND TBMPIM.SELR_USIS_ID != #{loginUsisId} /*자신회사가 아닌경우*/
+          AND TBMPIM.DEL_YN = 'N'
+	      AND TBMPIM.AGEN_INF_ID IS NULL /*에이전시 상품이 아닌것*/
+    </select>
+
+    <!-- 에이전시 요청 승인이력 여부 확인 -->
+    <select id="checkAgencyInfApplyProduct" parameterType="RequestSearchAgencyVO" resultType="Integer">
+        SELECT
+            *
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_AGEN_INF_M TBMAIM
+            INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_INF_M TBMPIM ON TBMPIM.PDF_INFO_ID = TBMAIM.PDF_INFO_ID AND TBMPIM.DEL_YN = 'N'
+        WHERE 1=1
+          AND TBMAIM.SEN_USIS_ID = #{loginUsisId} /*보낸사람*/
+          AND TBMAIM.SEN_USER_ID = #{loginUserId}
+          AND TBMAIM.REC_USIS_ID = TBMPIM.SELR_USIS_ID /*받는사람*/
+          AND TBMAIM.REC_USER_ID = TBMPIM.RGSN_USER_ID
+          AND TBMAIM.PDF_INFO_ID = #{pdfId}
+          AND TBMAIM.PCSNSTTS_ID IN ('COC01001', 'COC01003'); /*승인*/
+    </select>
+
+    <!-- 에이전시 요청 등록 -->
+    <insert id="addAgencyInfProduct" parameterType="RequestSearchAgencyVO">
+        INSERT INTO
+            <include refid="MARKET"/>TB_BOX_MKT_AGEN_INF_M(AGEN_INF_ID, SEN_USIS_ID, SEN_USER_ID, REC_USIS_ID, REC_USER_ID, PDF_INFO_ID, PCSNSTTS_ID, PCSN_CON, RGSN_USER_ID, RGSN_TS)
+        SELECT
+            #{agenInfId}
+            ,#{loginUsisId}
+            ,#{loginUserId}
+            ,TBMPIM.SELR_USIS_ID
+            ,TBMPIM.RGSN_USER_ID
+            ,TBMPIM.PDF_INFO_ID
+            ,#{pcsnsttsId}
+            ,#{pcsnCon}
+            ,#{loginUserId}
+            ,CURRENT_TIMESTAMP
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_PDF_INF_M TBMPIM
+        WHERE 1=1
+          AND TBMPIM.PDF_INFO_ID = #{pdfId}
+          AND TBMPIM.DEL_YN = 'N'
+    </insert>
+
+    <!-- 에이전시 요청 이력 등록 -->
+    <insert id="addAgencyInfProductHistory" parameterType="RequestSearchAgencyVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_AGEN_INF_H
+        (
+            AGEN_INF_ID
+            ,MDPH_SQN
+            ,PCSNSTTS_ID
+            ,PCSN_CON
+            ,RGSN_USER_ID
+            ,RGSN_TS
+        ) SELECT
+            #{agenInfId}
+            ,(NVL(MAX(MDPH_SQN),0) + 1)
+            ,#{pcsnsttsId}
+            ,#{pcsnCon}
+            ,#{rgsnUserId}
+            ,CURRENT_TIMESTAMP
+        FROM <include refid="MARKET"/>TB_BOX_MKT_AGEN_INF_H WHERE AGEN_INF_ID = #{agenInfId}
+    </insert>
+
+    <!-- 에이전시 정회원 여부 확인 -->
+    <select id="checkMyUserTypeAgency" parameterType="RequestSearchAgencyVO" resultType="Integer">
+        SELECT
+            *
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_SELR_INF_M
+        WHERE 1=1
+          AND SELR_USIS_ID = #{loginUsisId}
+          AND MMBRTYPE_ID = #{mmbrtypeId} /*정회원*/
+          AND MMBRSTTS_ID = #{mmbrsttsId} /*승인*/
+          AND USE_YN = #{mmbrUseYn} /*사용여부*/
+    </select>
+
+    <!-- 에이전시 요청 여부 확인 -->
+    <select id="checkMyUserAgency" parameterType="RequestSearchAgencyVO" resultType="Integer">
+        SELECT
+            *
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_AGEN_REQ_M
+        WHERE 1=1
+          AND SELR_USIS_ID = #{loginUsisId}
+          AND PCSNSTTS_ID IN('COC01001', 'COC01003') /*요청, 승인*/
+    </select>
+
+    <!-- 마이페이지 > 에이전시 승인 요청 등록 -->
+    <insert id="applyMyAgency" parameterType="RequestSearchAgencyVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_AGEN_REQ_M(AGEN_REQ_ID, SELR_USIS_ID, PCSN_CON, PCSNSTTS_ID, RGSN_USER_ID, RGSN_TS)
+        VALUES(#{agenReqId}, #{loginUsisId}, #{pcsnCon}, 'COC01001', #{loginUserId}, CURRENT_TIMESTAMP);
+    </insert>
+
+    <!-- 마이페이지 > 에이전시 요청 이력 등록 -->
+    <insert id="addMyAgencyHistory" parameterType="RequestSearchAgencyVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_AGEN_REQ_H(
+            AGEN_REQ_ID
+            ,MDPH_SQN
+            ,PCSNSTTS_ID
+            ,PCSN_CON
+            ,RGSN_USER_ID
+            ,RGSN_TS
+        ) SELECT
+            #{agenReqId}
+            ,(NVL(MAX(MDPH_SQN),0) + 1)
+            ,#{pcsnsttsId}
+            ,#{pcsnCon}
+            ,#{loginUserId}
+            ,CURRENT_TIMESTAMP
+        FROM <include refid="MARKET"/>TB_BOX_MKT_AGEN_REQ_H WHERE AGEN_REQ_ID = #{agenReqId}
+    </insert>
+
+    <!-- 마이페이지 > 에이전시 승인 요청취소 -->
+    <delete id="applyMyAgencyCancel" parameterType="String">
+        DELETE FROM <include refid="MARKET"/>TB_BOX_MKT_AGEN_REQ_M WHERE AGEN_REQ_ID = #{agenReqId} AND PCSNSTTS_ID = 'COC01001' AND SELR_USIS_ID = #{loginUsisId};
+    </delete>
+
+    <!-- 마이페이지 > 에이전시 승인 요청이력 삭제 -->
+    <delete id="addMyAgencyHistoryCancel" parameterType="String">
+        DELETE FROM <include refid="MARKET"/>TB_BOX_MKT_AGEN_REQ_H WHERE AGEN_REQ_ID = #{agenReqId};
+    </delete>
+
+    <!--    에이전시 접수 정보 조회   -->
+    <select id="selectAgencyInfo" parameterType="string" resultType="SummaryAgencyVO">
+        SELECT
+            TBMAIM.AGEN_INF_ID
+            , TBMAIM.PDF_INFO_ID
+            , TBMAIM.SEN_USIS_ID
+            , TBMAIM.SEN_USER_ID
+            , TBMAIM.REC_USIS_ID
+            , TBMAIM.REC_USER_ID
+
+        FROM <include refid="MARKET"/>TB_BOX_MKT_AGEN_INF_M TBMAIM
+        WHERE 1 = 1
+            AND TBMAIM.AGEN_INF_ID = #{agenInfId}
+    </select>
+
+    <select id="selectAgencyInfoListByPdfId" parameterType="string" resultType="SummaryAgencyVO">
+        SELECT
+            TBMAIM.AGEN_INF_ID
+            , TBMAIM.SEN_USIS_ID
+            , TBMAIM.SEN_USER_ID
+            , TBMAIM.REC_USIS_ID
+            , TBMAIM.REC_USER_ID
+            , TBMAIM.PDF_INFO_ID
+        FROM <include refid="MARKET"/>TB_BOX_MKT_AGEN_INF_M TBMAIM
+        WHERE TBMAIM.PDF_INFO_ID = #{pdfInfoId}
+    </select>
+
+    <!-- 에이전시 요청이력 정보 -->
+    <select id="applyAgencyMyDetail" parameterType="RequestSearchAgencyVO" resultType="SummaryAgencyRequestVO">
+        SELECT
+            *
+        FROM (
+            SELECT
+                TBMARM.AGEN_REQ_ID
+                ,TBMARM.PCSN_CON
+                ,TBMARM.PCSNSTTS_ID
+                ,TBMARM.RGSN_TS AS REQ_DATE
+                ,(
+                    SELECT
+                        RGSN_TS
+                    FROM
+                    (
+                        SELECT
+                            TBMARH.RGSN_TS
+                        FROM
+                            <include refid="MARKET"/>TB_BOX_MKT_AGEN_REQ_H TBMARH
+                        WHERE 1=1
+                            AND TBMARH.AGEN_REQ_ID = TBMARM.AGEN_REQ_ID
+                            AND TBMARH.PCSNSTTS_ID = TBMARM.PCSNSTTS_ID
+                        ORDER BY TBMARH.RGSN_TS DESC
+                    ) WHERE rownum = 1
+                ) AS STATE_DATE
+                ,ROW_NUMBER() OVER (ORDER BY RGSN_TS DESC) AS ROW_NUM
+            FROM
+                <include refid="MARKET"/>TB_BOX_MKT_AGEN_REQ_M TBMARM
+            WHERE 1=1
+                AND TBMARM.SELR_USIS_ID = #{loginUsisId}
+            )
+        WHERE ROW_NUM = 1
+    </select>
+
+    <!-- 마이페이지 > 에이전시 보낸요청/받은요청 Total -->
+    <select id="searchAgenInfMyStateTotal" parameterType="RequestSearchAgencyVO" resultType="Integer">
+        SELECT
+            COUNT(*)
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_AGEN_INF_M TBMAIM
+            INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_INF_M TBMPIM ON TBMAIM.PDF_INFO_ID = TBMPIM.PDF_INFO_ID
+            INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_FIE_R TBMPFR ON TBMAIM.PDF_INFO_ID = TBMPFR.PDF_INFO_ID
+            INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_FILE_ATCH_M TBMFAM ON TBMPFR.FILE_ID = TBMFAM.FILE_ID
+            INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_SAL_L TBMPSL ON TBMAIM.PDF_INFO_ID = TBMPSL.PDF_INFO_ID
+            INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D TBMCCD ON TBMPSL.COM_PRCUT_ID = TBMCCD.COM_CD_ID
+            INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_CTGY_C TBMCC ON TBMCC.CTGY_ID = TBMPIM.PDF_CTGY_ID
+        WHERE 1=1
+        <if test='agenSearchType != null and agenSearchType.equals("sen")'>
+            AND TBMAIM.SEN_USIS_ID = #{loginUsisId}
+        </if>
+        <if test='agenSearchType != null and agenSearchType.equals("rec")'>
+            AND TBMAIM.REC_USIS_ID = #{loginUsisId}
+        </if>
+          AND TBMPIM.PDF_PGRS_YN = #{pdfPgrsYn}
+          AND TBMPIM.PDF_STTS_ID = #{pdfSttsId}
+          AND TBMPIM.DEL_YN = 'N'
+          AND TBMPFR.FILE_PTRN_ID = #{filePtrnId}
+          AND TBMPFR.INFO_SQN = (SELECT MIN(INFO_SQN) FROM <include refid="MARKET"/>TB_BOX_MKT_PDF_FIE_R WHERE FILE_PTRN_ID = #{filePtrnId} AND PDF_INFO_ID = TBMPIM.PDF_INFO_ID)
+    </select>
+
+    <!-- 마이페이지 > 에이전시 목록 -->
+    <select id="searchAgencyInfMyList" parameterType="RequestSearchAgencyVO" resultType="SummaryAgencyVO">
+        <include refid="pagingHeader"/>
+            SELECT
+                TBMAIM.AGEN_INF_ID
+                ,TBMAIM.SEN_USIS_ID
+                ,TBMFIM_SEN.BPLC_NM AS SEN_BPLC_NM
+                ,TBMFIM_SEN.RPRSNTV_NM AS SEN_RPRSNTV_NM
+                ,TBMFIM.BPLC_NM
+                ,TBMFIM.RPRSNTV_NM
+                ,TBMAIM.SEN_USER_ID
+                ,TBMAIM.REC_USIS_ID
+                ,TBMFIM_REC.BPLC_NM AS REC_BPLC_NM
+                ,TBMFIM_REC.RPRSNTV_NM AS REC_RPRSNTV_NM
+                ,TBMAIM.REC_USER_ID
+                ,TBMAIM.PDF_INFO_ID
+                ,TBMAIM.PCSNSTTS_ID
+                ,TBMFAM.FILE_ID AS IMG_FILE_ID
+                ,TBMPIM.PDF_NM
+                ,TBMPSL.PDF_PRC
+                ,TBMCCD.COM_CD_NM
+                ,TBMPSL.SALE_PRC
+                ,TBMPSL.PRC_DSCS_YN
+                ,TBMPSL.ESTT_USE_EN
+                ,CASE WHEN TBMPIM.AGEN_INF_ID IS NULL THEN 'N' ELSE 'Y' END AS PDF_AGEN_STATE
+                ,TBMCC.TMS4_CLSF_NM AS CTGY_DATA
+                ,(
+                    SELECT
+                        RGSN_TS
+                    FROM
+                        (
+                            SELECT
+                                rownum, TBMARH.RGSN_TS
+                            FROM
+                                <include refid="MARKET"/>TB_BOX_MKT_AGEN_INF_H TBMARH
+                            WHERE 1=1
+                                AND TBMARH.AGEN_INF_ID = TBMAIM.AGEN_INF_ID
+                                AND TBMARH.PCSNSTTS_ID = TBMAIM.PCSNSTTS_ID
+                            ORDER BY TBMARH.RGSN_TS DESC
+                        ) WHERE rownum = 1
+                ) AS AGEN_REG_DATE
+            FROM
+                <include refid="MARKET"/>TB_BOX_MKT_AGEN_INF_M TBMAIM
+                INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_INF_M TBMPIM ON TBMAIM.PDF_INFO_ID = TBMPIM.PDF_INFO_ID
+                INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_FIE_R TBMPFR ON TBMAIM.PDF_INFO_ID = TBMPFR.PDF_INFO_ID
+                INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_FILE_ATCH_M TBMFAM ON TBMPFR.FILE_ID = TBMFAM.FILE_ID
+                INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_SAL_L TBMPSL ON TBMAIM.PDF_INFO_ID = TBMPSL.PDF_INFO_ID
+                INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D TBMCCD ON TBMPSL.COM_PRCUT_ID = TBMCCD.COM_CD_ID
+                INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_CTGY_C TBMCC ON TBMCC.CTGY_ID = TBMPIM.PDF_CTGY_ID
+                LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_FFPC_INF_M TBMFIM ON TBMFIM.UTLINSTT_ID = TBMPIM.SELR_USIS_ID
+                LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_FFPC_INF_M TBMFIM_SEN ON TBMFIM_SEN.UTLINSTT_ID = TBMAIM.SEN_USIS_ID
+                LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_FFPC_INF_M TBMFIM_REC ON TBMFIM_REC.UTLINSTT_ID = TBMAIM.REC_USIS_ID
+            WHERE 1=1
+                <if test='agenSearchType != null and agenSearchType.equals("sen")'>
+                    AND TBMAIM.SEN_USIS_ID = #{loginUsisId} /*보낸이용기관*/
+                </if>
+                <if test='agenSearchType != null and agenSearchType.equals("rec")'>
+                    AND TBMAIM.REC_USIS_ID = #{loginUsisId} /*받은이용기관*/
+                </if>
+                <if test='agenSearchFilter != null and agenSearchFilter != ""'>
+                    AND TBMAIM.PCSNSTTS_ID = #{agenSearchFilter}
+                </if>
+                AND TBMPIM.PDF_PGRS_YN = #{pdfPgrsYn}
+                AND TBMPIM.PDF_STTS_ID = #{pdfSttsId}
+                AND TBMPIM.DEL_YN = 'N'
+                AND TBMPFR.FILE_PTRN_ID = #{filePtrnId}
+                AND TBMPFR.INFO_SQN = (SELECT MIN(INFO_SQN) FROM <include refid="MARKET"/>TB_BOX_MKT_PDF_FIE_R WHERE FILE_PTRN_ID = #{filePtrnId} AND PDF_INFO_ID = TBMPIM.PDF_INFO_ID)
+            ORDER BY TBMAIM.RGSN_TS DESC
+        <include refid="pagingFooter"/>
+    </select>
+
+    <!-- 마이페이지 > 보낸요청 > 대기상태 > 취소 -->
+    <update id="updateAgencyInfMyCancel" parameterType="RequestSearchAgencyVO">
+        UPDATE
+            <include refid="MARKET"/>TB_BOX_MKT_AGEN_INF_M TBMAIM
+        SET
+            TBMAIM.PCSNSTTS_ID = #{pcsnsttsId} /*처리상태*/
+            ,TBMAIM.PCSN_CON = #{pcsnCon} /*처리내용*/
+            ,TBMAIM.AMNN_TS = CURRENT_TIMESTAMP
+            ,TBMAIM.AMNN_USER_ID = #{loginUserId}
+        WHERE 1=1
+            AND TBMAIM.AGEN_INF_ID = #{agenInfId}
+            AND TBMAIM.PCSNSTTS_ID = 'COC01001'
+            AND TBMAIM.SEN_USIS_ID = #{loginUsisId}
+    </update>
+
+    <!-- 마이페이지 > 받은요청 > 대기상태 > 반려 -->
+    <update id="updateAgencyInfMyReject" parameterType="RequestSearchAgencyVO">
+        UPDATE
+            <include refid="MARKET"/>TB_BOX_MKT_AGEN_INF_M TBMAIM
+        SET
+            TBMAIM.PCSNSTTS_ID = #{pcsnsttsId} /*처리상태*/
+            ,TBMAIM.PCSN_CON = #{pcsnCon} /*처리내용*/
+            ,TBMAIM.AMNN_TS = CURRENT_TIMESTAMP
+            ,TBMAIM.AMNN_USER_ID = #{loginUserId}
+        WHERE 1=1
+            AND TBMAIM.AGEN_INF_ID = #{agenInfId}
+            AND TBMAIM.PCSNSTTS_ID = 'COC01001'
+            AND TBMAIM.REC_USIS_ID = #{loginUsisId}
+    </update>
+
+    <!-- 마이페이지 > 에이전시 요청 이력 등록 -->
+    <insert id="addAgencyInfMyHistory" parameterType="RequestSearchAgencyVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_AGEN_INF_H
+        (
+            AGEN_INF_ID
+            ,MDPH_SQN
+            ,PCSNSTTS_ID
+            ,PCSN_CON
+            ,RGSN_USER_ID
+            ,RGSN_TS
+        ) SELECT
+            #{agenInfId}
+            ,(NVL(MAX(MDPH_SQN),0) + 1)
+            ,#{pcsnsttsId}
+            ,#{pcsnCon}
+            ,#{loginUserId}
+            ,CURRENT_TIMESTAMP
+        FROM <include refid="MARKET"/>TB_BOX_MKT_AGEN_INF_H WHERE AGEN_INF_ID = #{agenInfId}
+    </insert>
+
+    <!-- 마이페이지 > 상품 에이전시 요청 > 반려사유 -->
+    <select id="searchAgencyInfMyReason" parameterType="RequestSearchAgencyVO" resultType="SummaryAgencyReasonVO">
+        SELECT
+            TBMAIM.AGEN_INF_ID
+            ,TBMAIM.PDF_INFO_ID
+            ,TBMAIM.PCSN_CON
+            ,TBMAIM.PCSNSTTS_ID
+            ,(
+                SELECT
+                    RGSN_TS
+                FROM
+                (
+                    SELECT
+                        TBMAIH.RGSN_TS
+                    FROM
+                        <include refid="MARKET"/>TB_BOX_MKT_AGEN_INF_H TBMAIH
+                    WHERE 1=1
+                        AND TBMAIH.PCSNSTTS_ID = TBMAIM.PCSNSTTS_ID
+                    ORDER BY TBMAIH.RGSN_TS DESC
+                ) WHERE rownum = 1
+            ) AS REASON_DATE
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_AGEN_INF_M TBMAIM
+        WHERE 1=1
+            AND TBMAIM.AGEN_INF_ID = #{agenInfId}
+            AND TBMAIM.PCSNSTTS_ID = #{pcsnsttsId}
+    </select>
+
+    <!-- 마이페이지 > 상품 에이전시 > 요청받은 요청정보 검색 -->
+    <select id="updateAgencyInfMyApprovalInfo" parameterType="RequestSearchAgencyVO" resultType="SummaryAgencyVO">
+        SELECT
+            *
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_AGEN_INF_M TBMAIM
+        WHERE 1=1
+          AND TBMAIM.AGEN_INF_ID = #{agenInfId}
+          AND TBMAIM.PCSNSTTS_ID = #{pcsnsttsId}
+          AND TBMAIM.REC_USIS_ID = #{loginUsisId}
+    </select>
+
+    <!-- 마이페이지 > 상품 에이전시 > 받은요청 > 대기상태 > 승인 -->
+    <update id="updateAgencyInfMyApproval" parameterType="RequestSearchAgencyVO">
+        UPDATE
+            <include refid="MARKET"/>TB_BOX_MKT_AGEN_INF_M TBMAIM
+        SET
+            TBMAIM.PCSNSTTS_ID = #{pcsnsttsId} /*처리상태*/
+            ,TBMAIM.PCSN_CON = #{pcsnCon} /*처리내용*/
+            ,TBMAIM.ATHZ_PDF_INFO_ID = #{newPdfId} /*승인상품ID*/
+            ,TBMAIM.AMNN_TS = CURRENT_TIMESTAMP
+            ,TBMAIM.AMNN_USER_ID = #{loginUserId}
+        WHERE 1=1
+            AND TBMAIM.AGEN_INF_ID = #{agenInfId}
+            AND TBMAIM.PCSNSTTS_ID = 'COC01001'
+            AND TBMAIM.REC_USIS_ID = #{loginUsisId}
+    </update>
+
+    <!-- 마이페이지 > 상품 에이전시 > 받은요청 > 승인상태 > 취소 : 요청상태취소 -->
+    <update id="updateAgencyInfMyApprovalState" parameterType="RequestSearchAgencyVO">
+        UPDATE
+            <include refid="MARKET"/>TB_BOX_MKT_AGEN_INF_M TBMAIM
+        SET
+            TBMAIM.PCSNSTTS_ID = #{pcsnsttsId} /*처리상태*/
+            ,TBMAIM.PCSN_CON = #{pcsnCon} /*처리내용*/
+            ,TBMAIM.AMNN_TS = CURRENT_TIMESTAMP
+            ,TBMAIM.AMNN_USER_ID = #{loginUserId}
+        WHERE 1=1
+            AND TBMAIM.AGEN_INF_ID = #{agenInfId}
+            AND TBMAIM.REC_USIS_ID = #{loginUsisId}
+    </update>
+
+    <!-- 마이페이지 > 상품 에이전시 > 받은요청 > 승인상태 > 취소 : 상품취소 -->
+    <update id="updateAgencyPdfInfMyApprovalState" parameterType="RequestSearchAgencyVO">
+        UPDATE
+            <include refid="MARKET"/>TB_BOX_MKT_PDF_INF_M TBMPIM
+        SET
+            TBMPIM.PDF_PGRS_YN = #{pdfPgrsYn} /*진열상태*/
+            ,TBMPIM.PDF_STTS_ID = #{pdfSttsId} /*에이전시상품취소*/
+            ,TBMPIM.AMNN_TS = CURRENT_TIMESTAMP
+            ,TBMPIM.AMNN_USER_ID = #{loginUserId}
+        WHERE 1=1
+            AND TBMPIM.PDF_INFO_ID = #{pdfId}
+            AND TBMPIM.DEL_YN = 'N'
+    </update>
+
+</mapper>

@@ -1,0 +1,533 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ibk.sb.restapi.biz.service.order.repo.OrderReqRepo">
+
+    <sql id="MARKET"><include refid="com.ibk.sb.restapi.biz.service.common.repo.SchemaRepo.MARKET"/></sql>
+
+    <!-- PagingMapper ID -->
+    <sql id="pagingHeader"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageHeader"/></sql>
+    <sql id="pagingFooter"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageFooter"/></sql>
+
+    <insert id="insertOrderInfo" parameterType="RequestSearchOrderVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_ORDER_INF_M
+        (
+            ORDN_INFO_ID
+            , CNTT_NO_ID
+            , PUCS_USIS_ID
+            , PUCS_ID
+            , SELR_USIS_ID
+            , SELR_ID
+            , RGSN_USER_ID
+            , RGSN_TS
+            , AMNN_USER_ID
+            , AMNN_TS
+        )
+        VALUES
+        (
+            #{ordnInfoId}
+            , #{cnttNoId}
+            , #{pucsUsisId}
+            , #{pucsId}
+            , #{selrUsisId}
+            , #{selrId}
+            , #{rgsnUserId}
+            , CURRENT_TIMESTAMP
+            , ''
+            , ''
+        )
+    </insert>
+
+    <insert id="insertOrderPdf" parameterType="RequestSearchOrderVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDF_R
+        (
+            ORDN_INFO_ID
+            , INFO_SQN
+            , ORDN_PTRN_ID
+            , PDF_CTGY_ID
+            , PDF_NM
+            , QTY
+            , PDF_PRC
+            , TTAL_AMT
+            , DVRY_PTRN_ID
+            , DVRY_INFO_ID
+            , ORDN_STTS_ID
+            , PDF_INFO_ID
+            , RGSN_USER_ID
+            , RGSN_TS
+            , AMNN_USER_ID
+            , AMNN_TS
+        )
+        VALUES
+        (
+            #{ordnInfoId}
+            , #{infoSqn}
+            , #{ordnPtrnId}
+            , #{pdfCtgyId}
+            , #{pdfNm}
+            , #{qty}
+            , #{pdfPrc}
+            , #{qty} * #{pdfPrc}
+            , #{dvryPtrnId}
+            , #{dvryInfoId}
+            , #{ordnSttsId}
+            , #{pdfInfoId}
+            , #{rgsnUserId}
+            , CURRENT_TIMESTAMP
+            , ''
+            , ''
+        )
+    </insert>
+
+    <insert id="insertOrderDvryR" parameterType="RequestSearchOrderVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_ORDER_DVRY_R
+        (
+            ORDN_INFO_ID
+            , INFO_SQN
+            , ENTP_INFO_ID
+            , TRSPREQS_NO
+            , MAINNB_NO
+            , DVRYNONE
+            , RLONTF_ZPCD
+            , RLONTF_ADR
+            , RLONTF_DTAD
+            , RCAR_NM
+            , RCAR_CNPLONE
+            , RECV_CNPLTWO
+            , RECV_ZPCD
+            , RECV_ADR
+            , RECV_DTAD
+            , RGSN_USER_ID
+            , RGSN_TS
+            , AMNN_USER_ID
+            , AMNN_TS
+        )
+        VALUES
+        (
+            #{ordnInfoId}
+            , #{infoSqn}
+            , #{entpInfoId}
+            , #{trspreqsNo}
+            , #{mainnbNo}
+            , #{dvrynone}
+            , #{rlontfZpcd}
+            , #{rlontfAdr}
+            , #{rlontfDtad}
+            , #{recv}
+            , #{recvCnplone}
+            , #{recvCnpltwo}
+            , #{recvZpcd}
+            , #{recvAdr}
+            , #{recvDtad}
+            , #{rgsnUserId}
+            , CURRENT_TIMESTAMP
+            , ''
+            , ''
+        )
+    </insert>
+
+    <insert id="insertOrderUdvrR" parameterType="RequestSearchOrderVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_ORDER_UDVR_R
+        (
+            ORDN_INFO_ID
+            , INFO_SQN
+            , RECV_ZPCD
+            , RECV_ADR
+            , RECV_DTAD
+            , RGSN_USER_ID
+            , RGSN_TS
+            , AMNN_USER_ID
+            , AMNN_TS
+        )
+        VALUES
+        (
+            #{ordnInfoId}
+            , #{infoSqn}
+            , #{recvZpcd}
+            , #{recvAdr}
+            , #{recvDtad}
+            , #{rgsnUserId}
+            , CURRENT_TIMESTAMP
+            , ''
+            , ''
+        )
+    </insert>
+
+    <insert id="insertOrderPdvryR" parameterType="RequestSearchOrderVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDVRY_R
+        (
+            ORDN_INFO_ID
+            , INFO_SQN
+            , PCSVCMP_PTRN_ID
+            , MAINNB_NO
+            , DVRYNONE
+            , RCAR_NM
+            , RCAR_CNPLONE
+            , RECV_CNPLTWO
+            , RECV_ZPCD
+            , RECV_ADR
+            , RECV_DTAD
+            , RGSN_USER_ID
+            , RGSN_TS
+            , AMNN_USER_ID
+            , AMNN_TS
+        )
+        VALUES
+        (
+            #{ordnInfoId}
+            , #{infoSqn}
+            , #{pcsvcmpPtrnId}
+            , #{mainnbNo}
+            , #{dvrynone}
+            , #{recv}
+            , #{recvCnplone}
+            , #{recvCnpltwo}
+            , #{recvZpcd}
+            , #{recvAdr}
+            , #{recvDtad}
+            , #{rgsnUserId}
+            , CURRENT_TIMESTAMP
+            , ''
+            , ''
+        )
+    </insert>
+
+    <insert id="insertOrderPdfH" parameterType="RequestSearchOrderVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDF_H
+        (
+            ORDN_INFO_ID
+            , INFO_SQN
+            , MDPH_SQN
+            , ORDN_PTRN_ID
+            , PDF_CTGY_ID
+            , PDF_NM
+            , QTY
+            , PDF_PRC
+            , TTAL_AMT
+            , DVRY_PTRN_ID
+            , DVRY_INFO_ID
+            , ORDN_STTS_ID
+            , PDF_INFO_ID
+            , RGSN_USER_ID
+            , RGSN_TS
+        ) SELECT
+            #{ordnInfoId}
+            , #{infoSqn}
+            , (NVL(MAX(MDPH_SQN),0) + 1)
+            , #{ordnPtrnId}
+            , #{pdfCtgyId}
+            , #{pdfNm}
+            , #{qty}
+            , #{pdfPrc}
+            , #{qty} * #{pdfPrc}
+            , #{dvryPtrnId}
+            , #{dvryInfoId}
+            , #{ordnSttsId}
+            , #{pdfInfoId}
+            , #{rgsnUserId}
+            , CURRENT_TIMESTAMP
+        FROM <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDF_H WHERE ORDN_INFO_ID = #{ordnInfoId} AND INFO_SQN = #{infoSqn}
+    </insert>
+
+    <update id="updatePucsInfoForY" parameterType="RequestSearchOrderVO">
+        UPDATE
+            <include refid="MARKET"/>TB_BOX_MKT_PUCS_INF_M
+        SET
+            DLPL_USE_YN = #{dlplUseYn}
+            , RECV = #{recv}
+            , CNPLONE = #{recvCnplone}
+            , CNPLTWO = #{recvCnpltwo}
+            , ZPCD = #{recvZpcd}
+            , ADR = #{recvAdr}
+            , DTL_ADR = #{recvDtad}
+        WHERE 1=1
+            AND PUCS_USIS_ID = #{pucsUsisId}
+    </update>
+
+    <update id="updatePucsInfoForN" parameterType="RequestSearchOrderVO">
+        UPDATE
+            <include refid="MARKET"/>TB_BOX_MKT_PUCS_INF_M
+        SET
+            DLPL_USE_YN = #{dlplUseYn}
+        WHERE 1=1
+            AND PUCS_USIS_ID = #{pucsUsisId}
+    </update>
+
+    <update id="updateEsmInfoForOrdnId" parameterType="RequestSearchOrderVO">
+        UPDATE
+            <include refid="MARKET"/>TB_BOX_MKT_ESM_INF_M
+        SET
+            ORDN_INFO_ID = #{ordnInfoId}
+            , PCSNSTTS_ID = #{pcsnSttsId}
+        WHERE 1=1
+          AND ESTT_INFO_ID = #{esttInfoId}
+    </update>
+    
+    <update id="updateInesR" parameterType="RequestSearchOrderVO">
+        UPDATE <include refid="MARKET"/>TB_BOX_MKT_INES_R
+        SET
+            PCSNSTTS_ID = #{pcsnSttsId}
+        WHERE 1=1
+          AND ESTT_INFO_ID = #{esttInfoId}
+          AND PCSNSTTS_ID = 'ESS02001' /* 발송(ESS02001)*/
+    </update>
+
+    <update id="updateInquR" parameterType="RequestSearchOrderVO">
+        UPDATE <include refid="MARKET"/>TB_BOX_MKT_INQU_R
+        SET
+            CON = #{con}
+        WHERE 1=1
+          AND RFCD_ID = #{esttInfoId}
+          AND RCVR_USIS_ID = #{pucsUsisId}
+    </update>
+
+    <update id="updateOrderDvryForDvryInput" parameterType="RequestSearchOrderVO">
+        UPDATE <include refid="MARKET"/>TB_BOX_MKT_ORDER_DVRY_R
+        SET
+            TRSPREQS_NO = #{trspreqsNo}
+          , MAINNB_NO = #{mainnbNo}
+          , AMNN_USER_ID = #{rgsnUserId}
+          , AMNN_TS = CURRENT_TIMESTAMP
+        WHERE 1=1
+          AND ORDN_INFO_ID = #{ordnInfoId}
+          AND INFO_SQN = #{ordnPdfInfoSqn}
+    </update>
+
+    <select id="searchOrderInfo" parameterType="RequestSearchOrderVO" resultType="SummaryOrderInfoVO">
+        SELECT
+            ORDN_INFO_ID
+        FROM <include refid="MARKET"/>TB_BOX_MKT_ORDER_INF_M
+        WHERE 1=1
+          AND ORDN_INFO_ID = #{ordnInfoId}
+          AND SELR_USIS_ID = #{pucsUsisId}
+    </select>
+
+    <select id="searchOrderProductDeliveryListEntp" parameterType="RequestSearchOrderVO" resultType="OrderReqDeliveryVO">
+        SELECT
+            TBMODR.ENTP_INFO_ID
+        FROM <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDF_R TBMOPR
+            INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_ORDER_DVRY_R TBMODR ON TBMODR.ORDN_INFO_ID = TBMOPR.ORDN_INFO_ID AND TBMODR.INFO_SQN = TBMOPR .INFO_SQN
+        WHERE 1=1
+            AND TBMOPR.ORDN_INFO_ID = #{ordnInfoId}
+            AND TBMOPR.DVRY_PTRN_ID = 'GDS02001' /* 화물서비스(GDS02001) */
+            AND TBMODR.MAINNB_NO IS NULL
+        GROUP BY TBMODR.ENTP_INFO_ID
+    </select>
+
+    <select id="searchOrderProductDeliveryList" parameterType="RequestSearchOrderVO" resultType="OrderReqDeliveryVO">
+        SELECT
+            TBMOPR.ORDN_INFO_ID
+            , TBMOPR.DVRY_PTRN_ID
+            , TBMOPR.ORDN_STTS_ID
+            , TBMOPR.INFO_SQN
+            , TBMOPR.PDF_INFO_ID
+            , TBMOPR.PDF_NM
+            , TBMOPR.QTY AS PDF_QTY
+            , TBMOPR.PDF_PRC
+            , TBMOPR.TTAL_AMT
+            , TBMODR.DVRYNONE
+            , TBMODR.RCAR_NM AS RECV
+            , TBMODR.RCAR_CNPLONE AS RECV_CNPLONE
+            , TBMODR.RECV_CNPLTWO
+            , TBMODR.RECV_ZPCD
+            , TBMODR.RECV_ADR
+            , TBMODR.RECV_DTAD
+            , TBMODR.ENTP_INFO_ID
+            , TBMPDM.RLONTF_ZPCD
+            , TBMPDM.RLONTF_ADR
+            , TBMPDM.RLONTF_DTAD
+            , TBMOIM.SELR_ID
+        FROM <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDF_R TBMOPR
+            INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_ORDER_INF_M TBMOIM ON TBMOIM.ORDN_INFO_ID = TBMOPR.ORDN_INFO_ID
+            INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_ORDER_DVRY_R TBMODR ON TBMOPR.ORDN_INFO_ID = TBMODR.ORDN_INFO_ID AND TBMOPR.INFO_SQN = TBMODR.INFO_SQN
+            INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_DVRY_M TBMPDM ON TBMOPR.PDF_INFO_ID = TBMPDM.PDF_INFO_ID
+        WHERE 1=1
+            AND TBMOPR.ORDN_INFO_ID = #{ordnInfoId}
+            AND TBMOPR.DVRY_PTRN_ID = 'GDS02001' /* 화물서비스(GDS02001) */
+            AND TBMODR.MAINNB_NO IS NULL
+    </select>
+
+    <select id="searchOrderProductDelivery" parameterType="RequestSearchOrderVO" resultType="OrderReqDeliveryVO">
+        SELECT
+            TBMOPR.ORDN_INFO_ID
+             , TBMOPR.DVRY_PTRN_ID
+             , TBMOPR.ORDN_STTS_ID
+             , TBMOPR.INFO_SQN
+             , TBMOPR.PDF_INFO_ID
+             , TBMOPR.PDF_NM
+             , TBMOPR.QTY AS PDF_QTY
+             , TBMOPR.PDF_PRC
+             , TBMOPR.TTAL_AMT
+             , TBMOPDR.DVRYNONE
+             , TBMOPDR.RCAR_NM AS RECV
+             , TBMOPDR.RCAR_CNPLONE AS RECV_CNPLONE
+             , TBMOPDR.RECV_CNPLTWO
+             , TBMOPDR.RECV_ZPCD
+             , TBMOPDR.RECV_ADR
+             , TBMOPDR.RECV_DTAD
+             , TBMPDM.RLONTF_ZPCD
+             , TBMPDM.RLONTF_ADR
+             , TBMPDM.RLONTF_DTAD
+        FROM <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDF_R TBMOPR
+            INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDVRY_R TBMOPDR ON TBMOPR.ORDN_INFO_ID = TBMOPDR.ORDN_INFO_ID AND TBMOPR.INFO_SQN = TBMOPDR.INFO_SQN
+            INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_DVRY_M TBMPDM ON TBMOPR.PDF_INFO_ID = TBMPDM.PDF_INFO_ID
+        WHERE 1=1
+            AND TBMOPR.ORDN_INFO_ID = #{ordnInfoId}
+            AND TBMOPR.INFO_SQN = #{ordnPdfInfoSqn}
+    </select>
+
+    <select id="searchOrderProductDeliveryListForDvryCancel" parameterType="RequestSearchOrderVO" resultType="OrderReqDeliveryVO">
+        SELECT
+            TBMOPR.ORDN_INFO_ID
+            , TBMOPR.DVRY_PTRN_ID
+            , TBMOPR.ORDN_STTS_ID
+            , TBMOPR.INFO_SQN
+            , TBMOPR.PDF_INFO_ID
+            , TBMOPR.PDF_NM
+            , TBMOPR.QTY AS PDF_QTY
+            , TBMOPR.PDF_PRC
+            , TBMOPR.TTAL_AMT
+            , TBMODR.DVRYNONE
+            , TBMODR.RCAR_NM AS RECV
+            , TBMODR.RCAR_CNPLONE AS RECV_CNPLONE
+            , TBMODR.RECV_CNPLTWO
+            , TBMODR.RECV_ZPCD
+            , TBMODR.RECV_ADR
+            , TBMODR.RECV_DTAD
+            , TBMODR.TRSPREQS_NO
+            , TBMODR.MAINNB_NO
+            , TBMOIM.SELR_ID
+        FROM <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDF_R TBMOPR
+            INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_ORDER_INF_M TBMOIM ON TBMOIM.ORDN_INFO_ID = TBMOPR.ORDN_INFO_ID
+            INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_ORDER_DVRY_R TBMODR ON TBMOPR.ORDN_INFO_ID = TBMODR.ORDN_INFO_ID AND TBMOPR.INFO_SQN = TBMODR.INFO_SQN
+        WHERE 1=1
+            AND TBMOPR.ORDN_INFO_ID = #{ordnInfoId}
+            AND TBMODR.TRSPREQS_NO IS NOT NULL
+        ORDER BY TBMOPR.INFO_SQN
+    </select>
+
+    <select id="searchProductDelivery" parameterType="RequestSearchOrderVO" resultType="OrderReqDeliveryVO">
+        SELECT
+            TBMPIM.PDF_INFO_ID
+             , TBMPIM.PDF_NM
+             , TBMPDM.RLONTF_ZPCD
+             , TBMPDM.RLONTF_ADR
+             , TBMPDM.RLONTF_DTAD
+             , (
+                    SELECT
+                        TBMDEM.ENTP_INFO_ID
+                    FROM (
+                            SELECT
+                                NVL(LAG(QTY) OVER (ORDER BY QTY), 0) + 1 AS QTY_PREV /* 앞전 수량 + 1 */
+                                , QTY
+                                , ENTP_INFO_ID
+                            FROM <include refid="MARKET"/>TB_BOX_MKT_DVRY_ESTT_M
+                            WHERE PDF_INFO_ID = #{pdfInfoId}
+                        ) TBMDEM
+                    WHERE #{pdfQty} BETWEEN TBMDEM.QTY_PREV AND TBMDEM.QTY
+                        AND ROWNUM = 1
+                ) AS ENTP_INFO_ID
+            , (
+                    SELECT TBMDEM.ENTP_INFO_ID
+                    FROM (
+                            SELECT TBMDEM.ENTP_INFO_ID
+                            FROM <include refid="MARKET"/>TB_BOX_MKT_DVRY_ESTT_M TBMDEM
+                            WHERE TBMDEM.PDF_INFO_ID = #{pdfInfoId}
+                            ORDER BY QTY DESC
+                        ) TBMDEM
+                    WHERE ROWNUM = 1
+                ) AS ENTP_INFO_ID_MAX
+        FROM <include refid="MARKET"/>TB_BOX_MKT_PDF_INF_M TBMPIM
+            INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_DVRY_M TBMPDM ON TBMPIM.PDF_INFO_ID = TBMPDM.PDF_INFO_ID
+        WHERE 1=1
+          AND TBMPDM.PDF_INFO_ID = #{pdfInfoId}
+    </select>
+
+    <select id="searchEsmInfo" parameterType="RequestSearchOrderVO" resultType="OrderReqDeliveryVO">
+        SELECT
+            TBMEIM.ESTT_INFO_ID
+             , TBMEIM.PCSNSTTS_ID
+             , TBMEDM.DVRY_PTRN_ID
+             , TBMEDM.ENTP_INFO_ID
+             , TBMEDM.DVRYNONE
+             , TBMERCR.RCAR_NM AS RECV
+             , TBMERCR.RCAR_CNPLONE AS RECV_CNPLONE
+             , TBMERCR.RCAR_ZPCD AS RECV_ZPCD
+             , TBMERCR.RCAR_ADR AS RECV_ADR
+             , TBMERCR.RCAR_DTL_ADR AS RECV_DTAD
+             , TBMERLR.RLONTF_ZPCD
+             , TBMERLR.RLONTF_ADR
+             , TBMERLR.RLONTF_DTAD
+        FROM <include refid="MARKET"/>TB_BOX_MKT_ESM_INF_M TBMEIM
+             INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_ESM_DVRY_M TBMEDM ON TBMEDM.ESTT_INFO_ID = TBMEIM.ESTT_INFO_ID
+             INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_ESM_RCAR_R TBMERCR ON TBMERCR.ESTT_INFO_ID = TBMEIM.ESTT_INFO_ID
+             INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_ESM_RLON_R TBMERLR ON TBMERLR.ESTT_INFO_ID = TBMEIM.ESTT_INFO_ID
+        WHERE 1=1
+          AND TBMEIM.ESTT_INFO_ID = #{esttInfoId}
+    </select>
+
+    <select id="searchEsmPdfInfoList" parameterType="RequestSearchOrderVO" resultType="OrderReqProductVO">
+        SELECT
+            TBMEPR.PDF_NM
+             , TBMEPR.GEAR_PDF_INFO_ID AS PDF_INFO_ID
+             , TBMEPR.ESTT_PDF_PTRN_ID
+             , TBMEPR.ORDN_QTY AS QTY
+             , TBMEPR.PDF_PRC
+             , TBMEDM.DVRY_PTRN_ID
+             , TBMEDM.DVRYNONE
+             , TBMPIM.PDF_CTGY_ID
+        FROM <include refid="MARKET"/>TB_BOX_MKT_ESM_PDF_R TBMEPR
+             INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_ESM_DVRY_M TBMEDM ON TBMEDM.ESTT_INFO_ID = TBMEPR.ESTT_INFO_ID
+             LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_INF_M TBMPIM ON TBMPIM.PDF_INFO_ID = TBMEPR.GEAR_PDF_INFO_ID
+        WHERE 1=1
+          AND TBMEPR.ESTT_INFO_ID = #{esttInfoId}
+    </select>
+
+    <select id="searchPdfInfo" parameterType="String" resultType="OrderReqProductVO">
+        SELECT
+            TBMPIM.PDF_INFO_ID
+             , TBMPIM.PDF_CTGY_ID
+             , TBMPIM.PDF_NM
+             , TBMPIM.SELR_USIS_ID
+             , TBMPIM.RGSN_USER_ID AS SELR_ID
+             , TBMPDM.RLONTF_ZPCD
+             , TBMPDM.RLONTF_ADR
+             , TBMPDM.RLONTF_DTAD
+             , TBMPDL.ENTP_INFO_ID
+        FROM <include refid="MARKET"/>TB_BOX_MKT_PDF_INF_M TBMPIM
+             LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_DVRY_M TBMPDM ON TBMPDM.PDF_INFO_ID = TBMPIM.PDF_INFO_ID
+             LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_DEL_L TBMPDL ON TBMPDL.PDF_INFO_ID = TBMPIM.PDF_INFO_ID
+        WHERE 1=1
+          AND TBMPIM.PDF_INFO_ID = #{pdfInfoId}
+    </select>
+    
+    <insert id="insertOrderDchL" parameterType="OrderDvryDchLVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_ORDER_DCH_L
+        (
+            ORDN_INFO_ID
+            , INFO_SQN
+            , MDPH_SQN
+            , RQST_INFO
+            , RSLT_INFO
+            , RGSN_USER_ID
+            , RGSN_TS
+            , AMNN_USER_ID
+            , AMNN_TS
+        )
+        VALUES
+        (
+            #{ordnInfoId}
+            , #{infoSqn}
+            , (
+                SELECT NVL(MAX(MDPH_SQN), 0) + 1 FROM <include refid="MARKET"/>TB_BOX_MKT_ORDER_DCH_L WHERE ORDN_INFO_ID = #{ordnInfoId} AND INFO_SQN = #{infoSqn}
+            )
+            , #{rqstInfo}
+            , #{rsltInfo}
+            , #{rgsnUserId}
+            , CURRENT_TIMESTAMP
+            , ''
+            , ''
+        )
+    </insert>
+
+</mapper>

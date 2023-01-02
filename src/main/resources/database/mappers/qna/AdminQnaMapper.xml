@@ -1,0 +1,272 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ibk.sb.restapi.biz.service.adminqna.repo.AdminQnaRepo">
+
+    <sql id="MARKET"><include refid="com.ibk.sb.restapi.biz.service.common.repo.SchemaRepo.MARKET"/></sql>
+
+    <!--    PagingMapper ID-->
+    <sql id="pagingHeader"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageHeader"/></sql>
+    <sql id="pagingFooter"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageFooter"/></sql>
+
+    <!--    관리자 문의 리스트 조회   -->
+    <select id="searchAdminQnaList" parameterType="RequestSearchAdminQnaVO" resultType="SummaryAdminQnaVO">
+        <include refid="pagingHeader"/>
+            SELECT
+                TBMAIM.ADM_INQU_INF_ID
+
+                , TBMAIM.INQU_TYPE_ID
+                , TBMCCDTYPE.COM_CD_NM AS INQU_TYPE_NAME
+
+                , TBMAIM.INQU_STT_ID
+                , TBMCCDSTT.COM_CD_NM AS INQU_STT_NAME
+
+                , TBMAIM.TTL
+                , TBMAIM.RGSN_TS
+            FROM
+                <include refid="MARKET"/>TB_BOX_MKT_ADM_INQU_M TBMAIM
+
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D TBMCCDTYPE ON TBMCCDTYPE.COM_CD_ID = TBMAIM.INQU_TYPE_ID
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D TBMCCDSTT ON TBMCCDSTT.COM_CD_ID = TBMAIM.INQU_STT_ID
+
+            WHERE
+                1 = 1
+                AND DEL_YN = 'N'
+                AND TBMAIM.INQU_USIS_ID = #{inquUsisId}
+                AND TBMAIM.INQU_USER_ID = #{inquUserId}
+                <if test="inquTypeId != null and !inquTypeId.equals('')">
+                    AND TBMAIM.INQU_TYPE_ID = #{inquTypeId}
+                </if>
+                <if test="admInquInfId != null and !admInquInfId.equals('')">
+                    AND TBMAIM.ADM_INQU_INF_ID = #{admInquInfId}
+                </if>
+            ORDER BY TBMAIM.AMNN_TS DESC
+        <include refid="pagingFooter"/>
+    </select>
+
+    <!--    관리자 문의 내용 상세 조회    -->
+    <select id="searchAdminQna" parameterType="RequestSearchAdminQnaVO" resultType="AdminQnaVO">
+        SELECT
+            TBMAIM.ADM_INQU_INF_ID
+            , TBMAIM.INQU_USIS_ID
+            , TBMAIM.INQU_USER_ID
+            , TBMFIM.BPLC_NM
+            , TBMAIM.INQU_TYPE_ID
+            , TBMCCDTYPE.COM_CD_NM AS INQU_TYPE_NAME
+
+            , TBMAIM.INQU_STT_ID
+            , TBMCCDSTT.COM_CD_NM AS INQU_STT_NAME
+
+            , TBMAIM.TTL
+            , TBMAIM.CON
+            , TBMAIM.RGSN_USER_ID
+            , TBMAIM.RGSN_TS
+            , TBMAIM.AMNN_USER_ID
+            , TBMAIM.AMNN_TS
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_ADM_INQU_M TBMAIM
+        LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_FFPC_INF_M TBMFIM ON TBMFIM.UTLINSTT_ID = TBMAIM.INQU_USIS_ID
+        LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D TBMCCDTYPE ON TBMCCDTYPE.COM_CD_ID = TBMAIM.INQU_TYPE_ID
+        LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D TBMCCDSTT ON TBMCCDSTT.COM_CD_ID = TBMAIM.INQU_STT_ID
+
+        WHERE
+            1 = 1
+            AND DEL_YN = 'N'
+            AND TBMAIM.ADM_INQU_INF_ID = #{admInquInfId}
+            <if test="inquUsisId != null and !inquUsisId.equals('')">
+                AND TBMAIM.INQU_USIS_ID = #{inquUsisId}
+                AND TBMAIM.INQU_USER_ID = #{inquUserId}
+            </if>
+            <if test="inquTypeId != null and !inquTypeId.equals('')">
+                AND TBMAIM.INQU_TYPE_ID = #{inquTypeId}
+            </if>
+    </select>
+
+    <!--    관리자 문의 답변 상세 조회 -->
+    <select id="searchAdminQnaAnswer" parameterType="requestSearchAdminQnaVO" resultType="AdminQnaAnswerVO">
+        SELECT
+            TBMAAL.ADM_INQU_INF_ID
+            , TBMAAL.ADM_CON
+            , TBMAAL.RGSN_USER_ID
+            , TBMAAL.RGSN_TS
+            , TBMAAL.AMNN_USER_ID
+            , TBMAAL.AMNN_TS
+
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_ADM_ANS_L TBMAAL
+
+        WHERE 1 = 1
+            AND TBMAAL.ADM_INQU_INF_ID = #{admInquInfId}
+    </select>
+
+    <!--    관리자 문의 파일 정보 조회  -->
+    <select id="searchAdminQnaFileList" parameterType="string" resultType="AdminQnaFileVO">
+        SELECT
+            TBMAFL.ADM_INQU_INF_ID
+            , TBMAFL.FILE_ID
+            , TBMAFL.INFO_SQN
+            , TBMAFL.FILE_PTRN_ID
+            , TBMAFL.RGSN_TS
+            , TBMAFL.RGSN_USER_ID
+            , TBMAFL.AMNN_TS
+            , TBMAFL.AMNN_USER_ID
+
+            , TBMFAH.FILE_NM
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_ADM_FIE_L TBMAFL
+
+        LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_FILE_ATCH_M TBMFAH ON TBMFAH.FILE_ID = TBMAFL.FILE_ID
+
+        WHERE
+            1 = 1
+            AND TBMAFL.ADM_INQU_INF_ID = #{admInquInfId}
+            AND TBMAFL.FILE_PTRN_ID = #{filePtrnId}
+        ORDER BY TBMAFL.INFO_SQN ASC
+    </select>
+
+    <!--    관리자 문의 등록   -->
+    <insert id="saveAdminQna" parameterType="AdminQnaVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_ADM_INQU_M
+        (
+            ADM_INQU_INF_ID
+            , INQU_USIS_ID
+            , INQU_USER_ID
+            , INQU_TYPE_ID
+            , INQU_STT_ID
+            , TTL
+            , CON
+            , DEL_YN
+            , RGSN_USER_ID
+            , RGSN_TS
+            , AMNN_USER_ID
+            , AMNN_TS
+
+        )
+        VALUES
+        (
+            #{admInquInfId}
+            , #{inquUsisId}
+            , #{inquUserId}
+            , #{inquTypeId}
+            , #{inquSttId}
+            , #{ttl}
+            , #{con}
+            , 'N'
+            , #{rgsnUserId}
+            , CURRENT_TIMESTAMP
+            , #{amnnUserId}
+            , CURRENT_TIMESTAMP
+        )
+    </insert>
+
+    <!--    관리자 문의 파일 정보 등록 -->
+    <insert id="saveAdminQnaFile" parameterType="AdminQnaFileVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_ADM_FIE_L
+        (
+            ADM_INQU_INF_ID
+            , FILE_ID
+            , INFO_SQN
+            , FILE_PTRN_ID
+            , RGSN_USER_ID
+            , RGSN_TS
+            , AMNN_USER_ID
+            , AMNN_TS
+        )
+        VALUES
+        (
+            #{admInquInfId}
+            , #{fileId}
+            , (
+                SELECT CASE WHEN MAX(INFO_SQN) IS NULL THEN 1 ELSE MAX(INFO_SQN) + 1 END
+                FROM <include refid="MARKET"/>TB_BOX_MKT_ADM_FIE_L
+                WHERE ADM_INQU_INF_ID = #{admInquInfId}
+            )
+            , #{filePtrnId}
+            , #{rgsnUserId}
+            , CURRENT_TIMESTAMP
+            , #{amnnUserId}
+            , CURRENT_TIMESTAMP
+        )
+    </insert>
+
+    <!--    관리자 문의 삭제   -->
+    <update id="deleteAdminQna" parameterType="AdminQnaVO">
+        UPDATE
+            <include refid="MARKET"/>TB_BOX_MKT_ADM_INQU_M
+        SET
+            DEL_YN              = 'Y'
+            , AMNN_TS           = CURRENT_TIMESTAMP
+            , AMNN_USER_ID      = #{amnnUserId}
+        WHERE
+            ADM_INQU_INF_ID = #{admInquInfId}
+    </update>
+
+    <!-- 운영자포털 > 고객지원관리 > 문의관리 목록 -->
+    <select id="searchAdminInquiryList" parameterType="RequestSearchAdminQnaVO" resultType="SummaryAdminQnaVO">
+        <include refid="pagingHeader"/>
+        SELECT
+            TBMAIM.*
+            , TBMCCDTYPE.COM_CD_NM AS INQU_TYPE_NAME
+            , TBMCCDSTT.COM_CD_NM AS INQU_STT_NAME
+            ,TBMFIM.BPLC_NM
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_ADM_INQU_M TBMAIM
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_FFPC_INF_M TBMFIM ON TBMFIM.UTLINSTT_ID = TBMAIM.INQU_USIS_ID
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D TBMCCDTYPE ON TBMCCDTYPE.COM_CD_ID = TBMAIM.INQU_TYPE_ID
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D TBMCCDSTT ON TBMCCDSTT.COM_CD_ID = TBMAIM.INQU_STT_ID
+        WHERE 1=1
+            AND TBMAIM.DEL_YN ='N'
+            AND TBMAIM.INQU_TYPE_ID IN
+            <foreach collection="inquTypeIds" item="item" index="index" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+            <if test="inquSttId != null and !inquSttId.equals('')">
+                AND TBMAIM.INQU_STT_ID = #{inquSttId} -- 답변상태 유형
+            </if>
+            ORDER BY TBMAIM.RGSN_TS DESC
+        <include refid="pagingFooter"/>
+    </select>
+
+    <!-- 운영자포털 > 고객지원관리 > 문의관리 > 답변등록 -->
+    <insert id="inquirySave" parameterType="AdminQnaAnswerVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_ADM_ANS_L
+        (
+            ADM_INQU_INF_ID
+            ,ADM_CON
+            ,RGSN_USER_ID
+            ,RGSN_TS
+        )
+        VALUES
+        (
+            #{admInquInfId}
+            , #{admCon}
+            , #{rgsnUserId}
+            , CURRENT_TIMESTAMP
+        )
+    </insert>
+
+    <!-- 운영자포털 > 고객지원관리 > 문의관리 > 답변등록 > 문의자 상태업데이트 -->
+    <update id="inquiryStateUpdate" parameterType="AdminQnaAnswerVO">
+        UPDATE
+            <include refid="MARKET"/>TB_BOX_MKT_ADM_INQU_M
+        SET
+            INQU_STT_ID = #{inquSttId}
+            , AMNN_TS           = CURRENT_TIMESTAMP
+            , AMNN_USER_ID      = #{amnnUserId}
+        WHERE
+            ADM_INQU_INF_ID = #{admInquInfId}
+    </update>
+
+    <!-- 운영자포털 > 고객지원관리 > 문의관리 > 답변수정 -->
+    <update id="inquiryUpdate" parameterType="AdminQnaAnswerVO">
+        UPDATE
+            <include refid="MARKET"/>TB_BOX_MKT_ADM_ANS_L
+        SET
+            ADM_CON = #{admCon}
+            , AMNN_TS           = CURRENT_TIMESTAMP
+            , AMNN_USER_ID      = #{amnnUserId}
+        WHERE
+            ADM_INQU_INF_ID = #{admInquInfId}
+    </update>
+
+</mapper>

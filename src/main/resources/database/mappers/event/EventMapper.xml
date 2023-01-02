@@ -1,0 +1,417 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ibk.sb.restapi.biz.service.event.repo.EventRepo">
+    <sql id="MARKET"><include refid="com.ibk.sb.restapi.biz.service.common.repo.SchemaRepo.MARKET"/></sql>
+
+    <!-- PagingMapper ID-->
+    <sql id="pagingHeader"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageHeader"/></sql>
+    <sql id="pagingFooter"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageFooter"/></sql>
+
+    <!-- 이벤트 특정상태 리스트 조회 -->
+    <select id="selectEventList" parameterType="RequestSearchEventVO" resultType="SummaryEventVO">
+        <include refid="pagingHeader"/>
+        SELECT
+            TBMEIM.EVNT_INF_ID
+            ,TBMEIM.EVNT_TTL
+            ,TBMEIM.EVNT_CON
+            ,TBMEIM.ENLS_SLDY_TS
+            ,TBMEIM.ENLS_CLDY_TS
+            ,TBMEIM.EVNT_STDY_TS
+            ,TBMEIM.EVNT_FNDA_TS
+            ,TBMEIM.FILE_ID AS IMG_FILE_ID
+            ,CASE
+                WHEN CURRENT_DATE BETWEEN TBMEIM.EVNT_STDY_TS AND TBMEIM.EVNT_FNDA_TS THEN 'ETS00001'
+                WHEN CURRENT_DATE <![CDATA[ < ]]> TBMEIM.EVNT_STDY_TS THEN 'ETS00002'
+                WHEN CURRENT_DATE <![CDATA[ > ]]> TBMEIM.EVNT_FNDA_TS THEN 'ETS00003'
+            END AS PGST_ID
+            ,TO_DATE(TO_CHAR(TBMEIM.EVNT_FNDA_TS, 'YYYY-MM-DD'), 'YYYY-MM-DD')-TO_DATE(TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD'), 'YYYY-MM-DD') AS DAYS
+            ,TO_DATE(TO_CHAR(TBMEIM.ENLS_CLDY_TS, 'YYYY-MM-DD'), 'YYYY-MM-DD')-TO_DATE(TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD'), 'YYYY-MM-DD') AS ENLS_DAYS
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_EVNT_INF_M TBMEIM
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_FILE_ATCH_M TBMFAM ON TBMEIM.FILE_ID = TBMFAM.FILE_ID
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D TBMCCD ON TBMEIM.PGST_ID = TBMCCD.COM_CD_ID
+
+            /* 메인화면에서 조회 시, 선정 상품이 없는 이벤트는 조회하지 않음*/
+            <if test="mainEventFlg != null and !mainEventFlg.equals('')">
+                INNER JOIN (
+                    SELECT TBMEPL.EVNT_INF_ID
+                    FROM <include refid="MARKET"/>TB_BOX_MKT_EVNT_PDF_L TBMEPL
+                    INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_INF_M TBMPIM ON TBMEPL.PDF_INFO_ID = TBMPIM.PDF_INFO_ID
+                    WHERE 1 = 1
+                        AND TBMEPL.PCSNSTTS_ID = #{pcsnsttsId} /*선정*/
+                        AND TBMPIM.PDF_PGRS_YN = #{pdfPgrsYn} /*진열중*/
+                        AND TBMPIM.PDF_STTS_ID = #{pdfSttsId} /*판매중*/
+                        AND TBMPIM.DEL_YN = 'N'
+                    GROUP BY TBMEPL.EVNT_INF_ID
+                ) TBMEPL ON TBMEPL.EVNT_INF_ID = TBMEIM.EVNT_INF_ID
+            </if>
+
+        WHERE 1 = 1
+            AND TBMEIM.DEL_YN ='N'
+            AND TBMEIM.USE_YN = #{evntUsed}
+            <if test="evntTtl != null and !evntTtl.equals('')">
+                AND TBMEIM.EVNT_TTL LIKE '%' || #{evntTtl} || '%'
+            </if>
+            <if test="pgstId != null and pgstId.equals('ETS00001')">
+                AND CURRENT_DATE BETWEEN TBMEIM.EVNT_STDY_TS AND TBMEIM.EVNT_FNDA_TS
+                ORDER BY DAYS ASC, TBMEIM.RGSN_TS DESC
+            </if>
+            <if test="pgstId != null and pgstId.equals('ETS00002')">
+                AND CURRENT_DATE <![CDATA[ < ]]> TBMEIM.EVNT_STDY_TS
+                ORDER BY DAYS ASC, TBMEIM.RGSN_TS DESC
+            </if>
+            <if test="pgstId != null and pgstId.equals('ETS00003')">
+                AND CURRENT_DATE <![CDATA[ > ]]> TBMEIM.EVNT_FNDA_TS
+                ORDER BY DAYS ASC, TBMEIM.RGSN_TS DESC
+            </if>
+            <if test="pgstId != 'ETS00001' and pgstId != 'ETS00002' and pgstId != 'ETS00003'">
+                ORDER BY PGST_ID ASC, DAYS ASC
+            </if>
+        <include refid="pagingFooter"/>
+    </select>
+
+    <!-- 이벤트 상세 검색 -->
+    <select id="selectEventDetail" parameterType="RequestSearchEventVO" resultType="SummaryEventVO">
+        SELECT
+            TBMEIM.EVNT_INF_ID
+            ,TBMEIM.EVNT_TTL
+            ,TBMEIM.EVNT_CON
+            ,TBMEIM.ENLS_SLDY_TS
+            ,TBMEIM.ENLS_CLDY_TS
+            ,TBMEIM.EVNT_STDY_TS
+            ,TBMEIM.EVNT_FNDA_TS
+            ,CASE
+                WHEN CURRENT_DATE BETWEEN TBMEIM.EVNT_STDY_TS AND TBMEIM.EVNT_FNDA_TS THEN 'ETS00001'
+                WHEN CURRENT_DATE <![CDATA[ < ]]> TBMEIM.EVNT_STDY_TS THEN 'ETS00002'
+                WHEN CURRENT_DATE <![CDATA[ > ]]> TBMEIM.EVNT_FNDA_TS THEN 'ETS00003'
+            END AS PGST_ID
+            ,TBMFAM.FILE_ID AS IMG_FILE_ID
+            ,TO_DATE(TO_CHAR(TBMEIM.EVNT_FNDA_TS, 'YYYY-MM-DD'), 'YYYY-MM-DD')-TO_DATE(TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD'), 'YYYY-MM-DD') AS DAYS
+            ,TO_DATE(TO_CHAR(TBMEIM.ENLS_CLDY_TS, 'YYYY-MM-DD'), 'YYYY-MM-DD')-TO_DATE(TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD'), 'YYYY-MM-DD') AS ENLS_DAYS
+            ,(
+                SELECT
+                    CASE WHEN count(*) > 0 THEN 'Y' ELSE 'N' END
+                FROM
+                    <include refid="MARKET"/>TB_BOX_MKT_EVNT_INF_M
+                WHERE 1=1
+                    AND EVNT_INF_ID = TBMEIM.EVNT_INF_ID
+                    AND CURRENT_DATE BETWEEN ENLS_SLDY_TS AND ENLS_CLDY_TS
+            ) AS EVNT_USED_STATE /*Y 인경우만 가능, 모집중이면서 모집일인경우*/
+            ,(
+                SELECT TO_CHAR(MIN(TBMEPL.RGSN_TS), 'YYYY-MM-DD HH24:MI:SS') AS REQ_DATE
+                FROM  <include refid="MARKET"/>TB_BOX_MKT_EVNT_PDF_L TBMEPL
+                INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_INF_M TBMPIM ON TBMEPL.PDF_INFO_ID = TBMPIM.PDF_INFO_ID
+                WHERE 1=1
+                  AND TBMEPL.EVNT_INF_ID = #{evntInfId}
+                    <if test="loginUsisId != null and !loginUsisId.equals('')">
+                        AND TBMPIM.SELR_USIS_ID = #{loginUsisId}
+                    </if>
+                    <if test="loginUsisId == null or loginUsisId.equals('')">
+                        AND 1=2
+                    </if>
+            ) AS REQ_DATE
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_EVNT_INF_M TBMEIM
+        LEFT OUTER JOIN <include refid="MARKET"/>TB_BOX_MKT_FILE_ATCH_M TBMFAM ON TBMEIM.FILE_ID  = TBMFAM.FILE_ID
+        WHERE 1=1
+          AND TBMEIM.DEL_YN ='N'
+          AND TBMEIM.EVNT_INF_ID = #{evntInfId}
+    </select>
+
+    <!-- 이벤트 상세 검색 -->
+    <select id="selectEventDetailInfo" resultType="SummaryEventVO">
+        SELECT
+            TBMEIM.EVNT_INF_ID
+            ,TBMEIM.EVNT_TTL
+            ,TBMEIM.EVNT_CON
+            ,TBMEIM.ENLS_SLDY_TS
+            ,TBMEIM.ENLS_CLDY_TS
+            ,TBMEIM.EVNT_STDY_TS
+            ,TBMEIM.EVNT_FNDA_TS
+            ,CASE
+            WHEN CURRENT_DATE BETWEEN TBMEIM.EVNT_STDY_TS AND TBMEIM.EVNT_FNDA_TS THEN 'ETS00001'
+            WHEN CURRENT_DATE <![CDATA[ < ]]> TBMEIM.EVNT_STDY_TS THEN 'ETS00002'
+            WHEN CURRENT_DATE <![CDATA[ > ]]> TBMEIM.EVNT_FNDA_TS THEN 'ETS00003'
+            END AS PGST_ID
+            ,TBMEIM.FILE_ID
+            ,TBMEIM.FILE_ID  AS IMG_FILE_ID
+            ,TO_DATE(TO_CHAR(TBMEIM.EVNT_FNDA_TS, 'YYYY-MM-DD'), 'YYYY-MM-DD')-TO_DATE(TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD'), 'YYYY-MM-DD') AS DAYS
+            ,TO_DATE(TO_CHAR(TBMEIM.ENLS_CLDY_TS, 'YYYY-MM-DD'), 'YYYY-MM-DD')-TO_DATE(TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD'), 'YYYY-MM-DD') AS ENLS_DAYS
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_EVNT_INF_M TBMEIM
+            LEFT OUTER JOIN <include refid="MARKET"/>TB_BOX_MKT_FILE_ATCH_M TBMFAM ON TBMEIM.FILE_ID  = TBMFAM.FILE_ID
+        WHERE 1=1
+          AND TBMEIM.DEL_YN ='N'
+          AND TBMEIM.EVNT_INF_ID = #{evntInfId}
+    </select>
+
+    <!-- 이벤트 상태별 total 조회 -->
+    <select id="searchEventStateTotal" parameterType="string" resultType="SummaryEventTotalVO">
+        SELECT
+            SUM(DISTINCT
+                (
+                SELECT
+                  COUNT(*)
+                FROM
+                    <include refid="MARKET"/>TB_BOX_MKT_EVNT_INF_M
+                WHERE 1=1
+                    AND DEL_YN ='N'
+                    AND USE_YN ='Y'
+                    AND CURRENT_DATE BETWEEN EVNT_STDY_TS AND EVNT_FNDA_TS
+                )
+            ) AS EVENT_ING_CNT,
+            SUM(DISTINCT
+                (
+                SELECT
+                 COUNT(*)
+                FROM
+                    <include refid="MARKET"/>TB_BOX_MKT_EVNT_INF_M
+                WHERE 1=1
+                    AND DEL_YN ='N'
+                    AND USE_YN ='Y'
+                    AND CURRENT_DATE <![CDATA[ < ]]> EVNT_STDY_TS
+                )
+            ) AS EVENT_READY_CNT,
+            SUM(DISTINCT
+                (
+                SELECT
+                    COUNT(*)
+                FROM
+                    <include refid="MARKET"/>TB_BOX_MKT_EVNT_INF_M
+                WHERE 1=1
+                    AND DEL_YN ='N'
+                    AND USE_YN ='Y'
+                    AND CURRENT_DATE <![CDATA[ > ]]> EVNT_FNDA_TS
+                )
+            ) AS EVENT_END_CNT
+        FROM DUAL
+    </select>
+
+    <!-- 마이페이지 > 기업 이벤트 참여정보 -->
+    <select id="selectEventMyParticiList" parameterType="RequestSearchEventMyVO" resultType="SummaryEventMyParticiVO">
+        <include refid="pagingHeader"/>
+        SELECT
+            INFO.EVNT_INF_ID
+            ,INFO.ITEM_DETAIL
+            ,INFO.STATE_CODE
+        FROM
+            (
+                SELECT
+                    EVNT_INF_ID
+                    ,LISTAGG(PCSNSTTS_ID, ',') WITHIN GROUP (ORDER BY PCSNSTTS_ID) AS ITEM_DETAIL
+                    ,CASE
+                        WHEN INSTR(LISTAGG(PCSNSTTS_ID, ',') WITHIN GROUP (ORDER BY PCSNSTTS_ID), 'ETS01002') <![CDATA[ > ]]> 0 THEN 'ETS01002'
+                        WHEN INSTR(LISTAGG(PCSNSTTS_ID, ',') WITHIN GROUP (ORDER BY PCSNSTTS_ID), 'ETS01001') <![CDATA[ > ]]> 0 AND INSTR(LISTAGG(PCSNSTTS_ID, ',') WITHIN GROUP (ORDER BY PCSNSTTS_ID), 'ETS01003') = 0 THEN 'ETS01001'
+                        WHEN INSTR(LISTAGG(PCSNSTTS_ID, ',') WITHIN GROUP (ORDER BY PCSNSTTS_ID), 'ETS01003') <![CDATA[ > ]]> 0 AND INSTR(LISTAGG(PCSNSTTS_ID, ',') WITHIN GROUP (ORDER BY PCSNSTTS_ID), 'ETS01003') > 0 THEN 'ETS01003'
+                    END AS STATE_CODE
+                FROM
+                (
+                    SELECT
+                        TBMEPL.EVNT_INF_ID
+                        ,TBMEPL.PCSNSTTS_ID
+                        ,TBMEPL.PDF_INFO_ID
+                    FROM
+                        <include refid="MARKET"/>TB_BOX_MKT_EVNT_PDF_L TBMEPL
+                    WHERE 1=1
+                        AND TBMEPL.PDF_INFO_ID IN (
+                            SELECT
+                                A1.PDF_INFO_ID
+                            FROM
+                                <include refid="MARKET"/>TB_BOX_MKT_PDF_INF_M A1
+                            WHERE 1=1
+                                AND A1.SELR_USIS_ID = #{loginUsisId}
+                                AND A1.DEL_YN = 'N'
+                        ) GROUP BY TBMEPL.PCSNSTTS_ID,TBMEPL.EVNT_INF_ID, TBMEPL.PDF_INFO_ID
+                ) GROUP BY EVNT_INF_ID
+            ) AS INFO
+        WHERE 1=1
+        <if test="tabCode != null and tabCode.equals('ETS01001')">
+            -- 신청완료는 이벤트가 모집기간인 경우 기준으로 검색
+            AND (
+                SELECT
+                    count(TBMEIM.EVNT_INF_ID)
+                FROM <include refid="MARKET"/>TB_BOX_MKT_EVNT_INF_M TBMEIM
+                WHERE 1=1
+                    AND TBMEIM.EVNT_INF_ID = INFO.EVNT_INF_ID
+                    AND CURRENT_DATE BETWEEN TBMEIM.ENLS_SLDY_TS AND TBMEIM.ENLS_CLDY_TS
+            ) = 1
+        </if>
+        <if test="tabCode != null and tabCode.equals('ETS01002')">
+            AND INFO.STATE_CODE IN ('ETS01002')
+        </if>
+        <if test="tabCode != null and tabCode.equals('ETS01003')">
+            AND INFO.STATE_CODE IN ('ETS01001', 'ETS01003')
+        </if>
+        <include refid="pagingFooter"/>
+    </select>
+
+    <!-- 마이페이지 > 기업 이벤트 참여정보의 이벤트상세정보 -->
+    <select id="selectEventMyParticiInfoList" parameterType="RequestSearchEventMyVO" resultType="SummaryEventMyParticiInfoVO">
+        <include refid="pagingHeader"/>
+        SELECT
+            TBMEIM.EVNT_INF_ID
+            ,TBMEIM.EVNT_TTL
+            ,TBMEIM.EVNT_STDY_TS
+            ,TBMEIM.EVNT_FNDA_TS
+            ,TBMEIM.EVNT_CON
+            ,CASE
+            WHEN CURRENT_DATE BETWEEN TBMEIM.EVNT_STDY_TS AND TBMEIM.EVNT_FNDA_TS THEN 'ETS00001'
+            WHEN CURRENT_DATE <![CDATA[ < ]]> TBMEIM.EVNT_STDY_TS THEN 'ETS00002'
+            WHEN CURRENT_DATE <![CDATA[ > ]]> TBMEIM.EVNT_FNDA_TS THEN 'ETS00003'
+            END AS PGST_ID
+            ,TO_DATE(TO_CHAR(TBMEIM.EVNT_FNDA_TS, 'YYYY-MM-DD'), 'YYYY-MM-DD')-TO_DATE(TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD'), 'YYYY-MM-DD') AS DAYS
+            ,TO_DATE(TO_CHAR(TBMEIM.ENLS_CLDY_TS, 'YYYY-MM-DD'), 'YYYY-MM-DD')-TO_DATE(TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD'), 'YYYY-MM-DD') AS ENLS_DAYS
+            ,TBMEIM.FILE_ID AS IMG_FILE_ID
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_EVNT_INF_M TBMEIM
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_FILE_ATCH_M TBMFAM ON TBMEIM.FILE_ID = TBMFAM.FILE_ID
+        WHERE 1=1
+          AND TBMEIM.DEL_YN ='N'
+          AND TBMEIM.USE_YN ='Y'
+          AND TBMEIM.EVNT_INF_ID IN
+        <foreach collection="evntIds" item="item" index="index" separator="," open="(" close=")">
+            #{item}
+        </foreach>
+        <if test="pgstId != null and pgstId.equals('ETS00001')">
+            AND CURRENT_DATE BETWEEN TBMEIM.EVNT_STDY_TS AND TBMEIM.EVNT_FNDA_TS
+        </if>
+        <if test="pgstId != null and pgstId.equals('ETS00002')">
+            AND CURRENT_DATE <![CDATA[ < ]]> TBMEIM.EVNT_STDY_TS
+        </if>
+        <if test="pgstId != null and pgstId.equals('ETS00003')">
+            AND CURRENT_DATE <![CDATA[ > ]]> TBMEIM.EVNT_FNDA_TS
+        </if>
+        ORDER BY days ASC
+        <include refid="pagingFooter"/>
+    </select>
+
+    <!-- 마이페이지 > 기업 이벤트 참여정보의 이벤트상세정보 -->
+    <select id="searchEventMyDetail" parameterType="RequestSearchEventMyVO" resultType="SummaryEventVO">
+        SELECT
+            *
+        FROM
+            (
+                SELECT
+                    TBMEIM.EVNT_INF_ID
+                    ,TBMEIM.EVNT_TTL
+                    ,TBMEIM.EVNT_CON
+                    ,TBMEIM.ENLS_SLDY_TS
+                    ,TBMEIM.ENLS_CLDY_TS
+                    ,TBMEIM.EVNT_STDY_TS
+                    ,TBMEIM.EVNT_FNDA_TS
+                    ,CASE
+                    WHEN CURRENT_DATE BETWEEN TBMEIM.EVNT_STDY_TS AND TBMEIM.EVNT_FNDA_TS THEN 'ETS00001'
+                    WHEN CURRENT_DATE <![CDATA[ < ]]> TBMEIM.EVNT_STDY_TS THEN 'ETS00002'
+                    WHEN CURRENT_DATE <![CDATA[ > ]]> TBMEIM.EVNT_FNDA_TS THEN 'ETS00003'
+                    END AS PGST_ID
+                    ,TBMEPL.RGSN_TS AS RECEIPT_DATE
+                    ,TO_DATE(TO_CHAR(TBMEIM.EVNT_FNDA_TS, 'YYYY-MM-DD'), 'YYYY-MM-DD')-TO_DATE(TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD'), 'YYYY-MM-DD') AS DAYS
+                    ,TO_DATE(TO_CHAR(TBMEIM.ENLS_CLDY_TS, 'YYYY-MM-DD'), 'YYYY-MM-DD')-TO_DATE(TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD'), 'YYYY-MM-DD') AS ENLS_DAYS
+                    ,(
+                    SELECT
+                        CASE WHEN count(*) > 0 THEN 'Y' ELSE 'N' END
+                    FROM
+                        <include refid="MARKET"/>TB_BOX_MKT_EVNT_INF_M
+                    WHERE 1=1
+                        AND EVNT_INF_ID = TBMEIM.EVNT_INF_ID
+                        AND CURRENT_DATE BETWEEN ENLS_SLDY_TS AND ENLS_CLDY_TS
+                    ) AS EVNT_USED_STATE /*Y 인경우만 가능, 모집중이면서 모집일인경우*/
+                    , (
+                    SELECT
+                        CASE
+                            WHEN INSTR(LISTAGG(PCSNSTTS_ID, ',') WITHIN GROUP (ORDER BY PCSNSTTS_ID), 'ETS01002') <![CDATA[ > ]]> 0 THEN 'Y'
+                            ELSE 'N'
+                        END
+                    FROM
+                        <include refid="MARKET"/>TB_BOX_MKT_EVNT_PDF_L
+                    WHERE 1=1
+                        AND EVNT_INF_ID = TBMEIM.EVNT_INF_ID
+                        AND RGSN_USER_ID = TBMEPL.RGSN_USER_ID
+                    ) AS EVNT_PICKED_STATE /* 이벤트 선정 여부(선정 상품이 1개 이상이면, 이벤트는 선정) */
+                FROM
+                    <include refid="MARKET"/>TB_BOX_MKT_EVNT_PDF_L TBMEPL
+                    INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_EVNT_INF_M TBMEIM ON TBMEIM.EVNT_INF_ID = TBMEPL.EVNT_INF_ID
+                WHERE 1=1
+                  AND TBMEIM.DEL_YN ='N'
+                  AND TBMEPL.EVNT_INF_ID = #{evntInfId}
+                  AND TBMEPL.RGSN_USER_ID IN (
+                    SELECT
+                        TBMPIM.RGSN_USER_ID
+                    FROM
+                        <include refid="MARKET"/>TB_BOX_MKT_PDF_INF_M TBMPIM
+                    WHERE 1=1
+                      AND TBMPIM.SELR_USIS_ID = #{loginUsisId}
+                      AND TBMPIM.DEL_YN = 'N'
+                    GROUP BY TBMPIM.RGSN_USER_ID
+                ) ORDER BY TBMEPL.RGSN_TS ASC
+            ) WHERE rownum = 1
+    </select>
+
+    <insert id="insertEventInfo">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_EVNT_INF_M
+        (
+            EVNT_INF_ID
+            , FILE_ID
+            , EVNT_TTL
+            , EVNT_CON
+            , ENLS_SLDY_TS
+            , ENLS_CLDY_TS
+            , EVNT_STDY_TS
+            , EVNT_FNDA_TS
+            , PGST_ID
+            , USE_YN
+            , DEL_YN
+            , RGSN_USER_ID
+            , RGSN_TS
+            , AMNN_USER_ID
+            , AMNN_TS
+        )
+        VALUES
+        (
+            #{params.evntInfId}
+            , #{params.fileId}
+            , #{params.evntTtl}
+            , #{params.evntCon}
+            , #{params.enlsSldyTs}
+            , #{params.enlsCldyTs}
+            , #{params.evntStdyTs}
+            , #{params.evntFndaTs}
+            , #{params.pgstId}
+            , 'Y'
+            , 'N'
+            , #{params.rgsnUserId}
+            , CURRENT_TIMESTAMP
+            , #{params.amnnUserId}
+            , CURRENT_TIMESTAMP
+        )
+    </insert>
+
+    <update id="updateEventInfo">
+        UPDATE <include refid="MARKET"/>TB_BOX_MKT_EVNT_INF_M
+        SET
+            FILE_ID = #{params.fileId}
+            , EVNT_TTL = #{params.evntTtl}
+            , EVNT_CON = #{params.evntCon}
+            , ENLS_SLDY_TS = #{params.enlsSldyTs}
+            , ENLS_CLDY_TS = #{params.enlsCldyTs}
+            , EVNT_STDY_TS = #{params.evntStdyTs}
+            , EVNT_FNDA_TS = #{params.evntFndaTs}
+            , USE_YN = 'Y'
+            , AMNN_USER_ID = #{params.amnnUserId}
+            , AMNN_TS = CURRENT_TIMESTAMP
+        WHERE 1 = 1
+            AND EVNT_INF_ID = #{params.evntInfId}
+    </update>
+
+    <update id="deleteEventInfo">
+        UPDATE <include refid="MARKET"/>TB_BOX_MKT_EVNT_INF_M
+        SET
+            DEL_YN = 'Y'
+            , AMNN_USER_ID = #{params.amnnUserId}
+            , AMNN_TS = CURRENT_TIMESTAMP
+        WHERE 1 = 1
+            AND EVNT_INF_ID = #{params.evntInfId}
+    </update>
+
+</mapper>

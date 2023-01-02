@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ibk.sb.restapi.biz.service.order.repo.OrderSearchRepo">
+
+    <sql id="MARKET"><include refid="com.ibk.sb.restapi.biz.service.common.repo.SchemaRepo.MARKET"/></sql>
+
+    <!-- PagingMapper ID -->
+    <sql id="pagingHeader"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageHeader"/></sql>
+    <sql id="pagingFooter"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageFooter"/></sql>
+
+    <select id="searchOrdnPdfDtl" parameterType="RequestSearchProductVO" resultType="OrderPdfDtlVO">
+        SELECT
+            ORDN_INFO_ID
+            , PDF_INFO_ID
+            , QTY
+            , TTAL_AMT
+            , TO_CHAR(RGSN_TS, 'YYYY-MM-DD HH24:MI:SS') AS RGSN_TS_STR
+            , IS_REVIEWED
+        FROM (
+             SELECT
+                 TBMOPR.ORDN_INFO_ID
+                , TBMOPR.INFO_SQN
+                , TBMOPR.PDF_INFO_ID
+                , TBMOPR.QTY
+                , TBMOPR.TTAL_AMT
+                , TBMOIM.RGSN_TS
+                , CASE
+                    WHEN TBMPRR.REV_INF_ID IS NOT NULL THEN 'Y'
+                    ELSE 'N'
+                    END AS IS_REVIEWED
+                , ROW_NUMBER() OVER (ORDER BY TBMOIM.RGSN_TS DESC) AS ROW_NUM
+             FROM <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDF_R TBMOPR
+                INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_ORDER_INF_M TBMOIM ON TBMOIM.ORDN_INFO_ID = TBMOPR.ORDN_INFO_ID
+                INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_PAY_L TBMPPL ON TBMPPL.STLM_INFO_ID = TBMOIM.STLM_INFO_ID
+                LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_REV_R TBMPRR ON TBMPRR.PDF_ODR_ID = TBMOPR.ORDN_INFO_ID AND TBMPRR.PDF_INFO_ID = TBMOPR.PDF_INFO_ID
+             WHERE 1=1
+                AND TBMOPR.PDF_INFO_ID = #{pdfInfoId}
+                AND TBMOIM.PUCS_USIS_ID = #{loginUtlinsttId}
+                AND TBMPPL.STLMSTTS_ID = 'PYS01003' /* 결제완료(PYS01003) */
+             )
+        WHERE ROW_NUM = 1
+    </select>
+
+</mapper>

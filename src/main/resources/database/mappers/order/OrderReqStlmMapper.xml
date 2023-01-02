@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ibk.sb.restapi.biz.service.order.repo.OrderReqStlmRepo">
+
+    <sql id="MARKET"><include refid="com.ibk.sb.restapi.biz.service.common.repo.SchemaRepo.MARKET"/></sql>
+
+    <!-- PagingMapper ID -->
+    <sql id="pagingHeader"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageHeader"/></sql>
+    <sql id="pagingFooter"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageFooter"/></sql>
+
+    <insert id="insertPdfPayL" parameterType="OrderReqStlmVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_PDF_PAY_L
+        (
+            STLM_INFO_ID
+            , ORDN_INFO_ID
+            , STLMPTRN_ID
+            , STLMSTTS_ID
+            , RQST_INFO
+            , RSLT_INFO
+            , AMT
+            , STLM_RSLT_ID
+            , RGSN_USER_ID
+            , RGSN_TS
+            , AMNN_USER_ID
+            , AMNN_TS
+        )
+        VALUES
+        (
+           #{stlmInfoId}
+           , #{ordnInfoId}
+           , #{stlmptrnId}
+           , #{stlmsttsId}
+           , #{rqstInfo}
+           , #{rsltInfo}
+           , #{amt}
+           , #{stlmRsltId}
+           , #{rgsnUserId}
+           , CURRENT_TIMESTAMP
+           , ''
+           , ''
+        )
+    </insert>
+
+    <update id="updatePdfPayL" parameterType="OrderReqStlmVO">
+        UPDATE
+            <include refid="MARKET"/>TB_BOX_MKT_PDF_PAY_L
+        SET
+            STLMPTRN_ID = #{stlmptrnId}
+            , STLMSTTS_ID = #{stlmsttsId}
+            , RQST_INFO = #{rqstInfo}
+            , RSLT_INFO = #{rsltInfo}
+            , AMT = #{amt}
+            , STLM_RSLT_ID = #{stlmRsltId}
+            , AMNN_USER_ID = #{rgsnUserId}
+            , AMNN_TS = CURRENT_TIMESTAMP
+        WHERE 1=1
+            AND STLM_INFO_ID = #{stlmInfoId}
+    </update>
+
+    <update id="updatePdfPayLForPayCancel" parameterType="OrderReqStlmVO">
+        UPDATE
+            <include refid="MARKET"/>TB_BOX_MKT_PDF_PAY_L
+        SET
+            STLMSTTS_ID = #{stlmsttsId}
+            , AMNN_USER_ID = #{rgsnUserId}
+            , AMNN_TS = CURRENT_TIMESTAMP
+        WHERE 1=1
+          AND STLM_INFO_ID = #{stlmInfoId}
+    </update>
+
+    <insert id="insertPdfPayH" parameterType="OrderReqStlmVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_PDF_PAY_H
+        (
+            STLM_INFO_ID
+            , INFO_SQN
+            , ORDN_INFO_ID
+            , STLMPTRN_ID
+            , STLMSTTS_ID
+            , RQST_INFO
+            , RSLT_INFO
+            , AMT
+            , STLM_RSLT_ID
+            , RGSN_USER_ID
+            , RGSN_TS
+        )
+        SELECT
+            STLM_INFO_ID
+             , (SELECT CASE WHEN MAX(INFO_SQN) IS NULL THEN 0 ELSE MAX(INFO_SQN) + 1 END FROM <include refid="MARKET"/>TB_BOX_MKT_PDF_PAY_H WHERE STLM_INFO_ID = #{stlmInfoId})
+             , ORDN_INFO_ID
+             , STLMPTRN_ID
+             , STLMSTTS_ID
+             , RQST_INFO
+             , RSLT_INFO
+             , AMT
+             , STLM_RSLT_ID
+             , #{rgsnUserId}
+             , CURRENT_TIMESTAMP
+        FROM <include refid="MARKET"/>TB_BOX_MKT_PDF_PAY_L
+        WHERE 1=1
+            AND STLM_INFO_ID = #{stlmInfoId}
+    </insert>
+
+    <select id="searchOrderInfo" parameterType="OrderReqStlmVO" resultType="SummaryOrdnStlmVO">
+        SELECT
+            TBMOIM.ORDN_INFO_ID
+             , TBMPPL.STLM_INFO_ID
+        FROM <include refid="MARKET"/>TB_BOX_MKT_ORDER_INF_M TBMOIM
+             LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_PAY_L TBMPPL ON TBMPPL.ORDN_INFO_ID = TBMOIM.ORDN_INFO_ID
+        WHERE 1=1
+          AND TBMOIM.ORDN_INFO_ID = #{ordnInfoId}
+    </select>
+
+    <update id="updateOrderInfoForStlm" parameterType="OrderReqStlmVO">
+        UPDATE <include refid="MARKET"/>TB_BOX_MKT_ORDER_INF_M
+        SET
+            STLM_INFO_ID = #{stlmInfoId}
+        WHERE 1=1
+          AND ORDN_INFO_ID = #{ordnInfoId}
+    </update>
+
+    <update id="updateOrderPdfSttsForStlm" parameterType="OrderReqStlmVO">
+        UPDATE
+        <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDF_R
+        SET
+            ORDN_STTS_ID = 'ODS00001' /* 주문(ODS00001) */
+            , AMNN_USER_ID = #{rgsnUserId}
+            , AMNN_TS = CURRENT_TIMESTAMP
+        WHERE 1=1
+            AND ORDN_INFO_ID = #{ordnInfoId}
+            AND ORDN_STTS_ID = 'ODS00008' /* 가주문(ODS00008) */
+    </update>
+
+    <insert id="insertOrderPdfHForStlm" parameterType="OrderReqStlmVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDF_H
+        (
+            ORDN_INFO_ID
+            , INFO_SQN
+            , MDPH_SQN
+            , ORDN_PTRN_ID
+            , PDF_CTGY_ID
+            , PDF_NM
+            , QTY
+            , PDF_PRC
+            , TTAL_AMT
+            , DVRY_PTRN_ID
+            , DVRY_INFO_ID
+            , ORDN_STTS_ID
+            , PDF_INFO_ID
+            , RGSN_USER_ID
+            , RGSN_TS
+        )
+        SELECT
+            A.ORDN_INFO_ID
+            , A.INFO_SQN
+            , (NVL(B.MAX_MDPH_SQN, 0) + ROW_NUMBER() OVER (PARTITION BY A.ORDN_INFO_ID, A.INFO_SQN ORDER BY A.RGSN_TS ASC)) AS MDPH_SQN
+            , A.ORDN_PTRN_ID
+            , A.PDF_CTGY_ID
+            , A.PDF_NM
+            , A.QTY
+            , A.PDF_PRC
+            , A.TTAL_AMT
+            , A.DVRY_PTRN_ID
+            , A.DVRY_INFO_ID
+            , A.ORDN_STTS_ID
+            , A.PDF_INFO_ID
+            , #{rgsnUserId}
+            , CURRENT_TIMESTAMP
+        FROM <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDF_R A
+        LEFT OUTER JOIN (
+            SELECT ORDN_INFO_ID, INFO_SQN, NVL(MAX(MDPH_SQN), 1) AS MAX_MDPH_SQN
+            FROM <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDF_H
+            GROUP BY ORDN_INFO_ID, INFO_SQN
+        ) B ON (A.ORDN_INFO_ID = B.ORDN_INFO_ID AND A.INFO_SQN = B.INFO_SQN)
+        WHERE 1=1
+        AND A.ORDN_INFO_ID = #{ordnInfoId}
+    </insert>
+
+</mapper>

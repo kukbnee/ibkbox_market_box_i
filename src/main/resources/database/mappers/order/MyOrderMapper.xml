@@ -1,0 +1,407 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ibk.sb.restapi.biz.service.order.mypage.repo.MyOrderRepo">
+
+    <sql id="MARKET"><include refid="com.ibk.sb.restapi.biz.service.common.repo.SchemaRepo.MARKET"/></sql>
+
+    <!--    PagingMapper ID-->
+    <sql id="pagingHeader"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageHeader"/></sql>
+    <sql id="pagingFooter"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageFooter"/></sql>
+
+    <!--   판매 / 구매내역 리스트 조회  -->
+    <select id="selectMyOrderBuyList" parameterType="RequestSearchMyOrderVO" resultType="SummarySalesBuyVO">
+        <include refid="pagingHeader"/>
+            SELECT
+                TBMOIM.ORDN_INFO_ID
+                , TBMOIM.CNTT_NO_ID
+                , TBMOIM.STLM_INFO_ID
+
+                , TBMOIM.PUCS_USIS_ID
+                , TBMOIM.PUCS_ID
+                , TBMFIM.BPLC_NM AS PUCS_USIS_NM
+
+                , TBMOIM.SELR_USIS_ID
+                , TBMOIM.SELR_ID
+                , TBMFIMM.BPLC_NM AS SELR_USIS_NM
+                , TBMFIMM.RPRSNTV_NM AS SELR_NM
+
+                , (SELECT SUM(TTAL_AMT) FROM <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDF_R WHERE ORDN_INFO_ID = TBMOIM.ORDN_INFO_ID) AS TTAL_AMT
+
+                , TBMOIM.RGSN_USER_ID
+                , TBMOIM.RGSN_TS
+                , TBMOIM.AMNN_USER_ID
+                , TBMOIM.AMNN_TS
+
+                , TBMPPL.STLMPTRN_ID
+                , TBMPPL.STLMSTTS_ID
+                , TBMPPL.RQST_INFO
+                , TBMPPL.RSLT_INFO
+                , TBMPPL.AMT
+                , TBMPPL.STLM_RSLT_ID
+
+            FROM
+                <include refid="MARKET"/>TB_BOX_MKT_ORDER_INF_M TBMOIM
+
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_FFPC_INF_M TBMFIM ON TBMFIM.UTLINSTT_ID = TBMOIM.PUCS_USIS_ID
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_FFPC_INF_M TBMFIMM ON TBMFIMM.UTLINSTT_ID = TBMOIM.SELR_USIS_ID
+
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_PAY_L TBMPPL ON TBMPPL.STLM_INFO_ID = TBMOIM.STLM_INFO_ID
+
+            <if test="(pdfNm != null and !pdfNm.equals('')) or (ordnSttsId != null and !ordnSttsId.equals(''))">
+                INNER JOIN (
+                    SELECT ORDN_INFO_ID
+                    FROM <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDF_R
+                    WHERE 1 = 1
+                        <if test="pdfNm != null and !pdfNm.equals('')">
+                            AND LOWER(PDF_NM) LIKE '%' || LOWER(#{pdfNm}) || '%'
+                        </if>
+                        <if test="ordnSttsId != null and !ordnSttsId.equals('')">
+                            AND ORDN_STTS_ID = #{ordnSttsId}
+                        </if>
+                    GROUP BY ORDN_INFO_ID
+                ) PDFR ON PDFR.ORDN_INFO_ID = TBMOIM.ORDN_INFO_ID
+            </if>
+
+            WHERE 1 = 1
+            <if test="ordnInfoId != null and !ordnInfoId.equals('')">
+                AND TBMOIM.ORDN_INFO_ID = #{ordnInfoId}
+            </if>
+            <if test="pucsUsisId != null and !pucsUsisId.equals('')">
+                AND TBMOIM.PUCS_USIS_ID = #{pucsUsisId}
+            </if>
+            <if test="selrUsisId != null and !selrUsisId.equals('')">
+                AND TBMOIM.SELR_USIS_ID = #{selrUsisId}
+            </if>
+            <if test="stDt != null and !stDt.equals('') and edDt != null and !edDt.equals('')">
+                AND NVL(TBMOIM.AMNN_TS, TBMOIM.RGSN_TS) BETWEEN TO_DATE(#{stDt} || ' 00:00:00', 'YYYY-MM-DD HH24:MI:SS') AND TO_DATE(#{edDt} || ' 23:59:59', 'YYYY-MM-DD HH24:MI:SS')
+            </if>
+            <if test="selrUsisNm != null and !selrUsisNm.equals('')">
+                AND LOWER(TBMFIMM.BPLC_NM) LIKE LOWER('%' || #{selrUsisNm} || '%')
+            </if>
+            ORDER BY TBMOIM.RGSN_TS DESC
+        <include refid="pagingFooter"/>
+    </select>
+
+    <!--    주문 상품 정보 리스트 조회 -->
+    <select id="selectMyOrderProduct" parameterType="string" resultType="SummarySalesProductVO">
+        SELECT
+            TBMOPR.ORDN_INFO_ID
+            , TBMOPR.INFO_SQN
+            , TBMOPR.ORDN_PTRN_ID
+
+            , TBMOPR.PDF_CTGY_ID
+            , TBMCC.TMS5_CLSF_NM AS PDF_CTGY_NM
+
+            , TBMOPR.PDF_NM
+            , TBMOPR.QTY
+            , TBMOPR.PDF_PRC
+            , TBMOPR.TTAL_AMT
+            , TBMOPR.DVRY_PTRN_ID
+            , TBMOPR.DVRY_INFO_ID
+            , TBMOPR.ORDN_STTS_ID
+            , TBMOPR.PDF_INFO_ID
+            , TBMOPR.RGSN_USER_ID
+            , TBMOPR.RGSN_TS
+            , TBMOPR.AMNN_USER_ID
+            , TBMOPR.AMNN_TS
+
+            , TBMOIM.SELR_USIS_ID
+            , TBMOIM.SELR_ID
+            , TBMFIM.BPLC_NM AS SELR_USIS_NM
+            , TBMFIM.RPRSNTV_NM
+            , TBMSIM.MMBRTYPE_ID
+
+            , TBMOIM.PUCS_USIS_ID
+            , TBMOIM.PUCS_ID
+            , TBMFIMM.BPLC_NM AS PUCS_USIS_NM
+
+            , TBMOPR.ORDN_STTS_ID
+            , TBMPIM.AGEN_INF_ID
+            , TBMPSL.PRC_DSCS_YN
+            , TBMPFR.FILE_ID AS IMG_FILE_ID
+
+            , TBMDVRY.DVRYNONE
+            , TBMDVRY.DVRY_TBL_NM
+            , TBMDIM.ENTP_NM AS DVRY_ENTP_NM
+            , TBMDVRY.TRSPREQS_NO
+            , TBMDVRY.PCSVCMP_PTRN_ID
+            , (SELECT COM_CD_NM FROM <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D WHERE COM_CD_ID = TBMDVRY.PCSVCMP_PTRN_ID) AS PCSVCMP_PTRN_NM
+            , CASE
+                    WHEN TBMDVRY.PCSVCMP_PTRN_ID = 'ODS01013' THEN TBMDVRY.PCSVCMP_NM
+                    ELSE (SELECT COM_CD_NM FROM <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D WHERE COM_CD_ID = TBMDVRY.PCSVCMP_PTRN_ID)
+                    END AS PCSVCMP_NM
+            , TBMDVRY.MAINNB_NO
+            , TBMDVRY.RECV
+            , TBMDVRY.RECV_CNPLONE
+            , TBMDVRY.RECV_CNPLTWO
+            , TBMDVRY.RECV_ZPCD
+            , TBMDVRY.RECV_ADR
+            , TBMDVRY.RECV_DTAD
+
+            , (SELECT CASE WHEN COUNT(1) > 0 THEN 'Y' ELSE 'N' END
+                FROM <include refid="MARKET"/>TB_BOX_MKT_PDF_REV_R
+                WHERE PDF_ODR_ID = TBMOPR.ORDN_INFO_ID AND PDF_INFO_ID = TBMOPR.PDF_INFO_ID) AS IS_REVIEWED
+
+            , TBMEIM.ESTT_INFO_ID
+
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDF_R TBMOPR
+
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_CTGY_C TBMCC ON TBMCC.CTGY_ID = TBMOPR.PDF_CTGY_ID
+
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_ORDER_INF_M TBMOIM ON TBMOPR.ORDN_INFO_ID = TBMOIM.ORDN_INFO_ID
+
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_ESM_INF_M TBMEIM ON TBMEIM.ORDN_INFO_ID = TBMOPR.ORDN_INFO_ID
+
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_FFPC_INF_M TBMFIM ON TBMFIM.UTLINSTT_ID = TBMOIM.SELR_USIS_ID
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_SELR_INF_M TBMSIM ON TBMSIM.SELR_USIS_ID = TBMOIM.SELR_USIS_ID
+
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_FFPC_INF_M TBMFIMM ON TBMFIMM.UTLINSTT_ID = TBMOIM.PUCS_USIS_ID
+
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_INF_M TBMPIM ON TBMPIM.PDF_INFO_ID = TBMOPR.PDF_INFO_ID
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_SAL_L TBMPSL ON TBMPSL.PDF_INFO_ID = TBMOPR.PDF_INFO_ID
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_FIE_R TBMPFR ON TBMPFR.PDF_INFO_ID = TBMOPR.PDF_INFO_ID AND TBMPFR.INFO_SQN = 1 AND TBMPFR.FILE_PTRN_ID = #{filePtrnId}
+
+            INNER JOIN (
+                SELECT
+                    '화물서비스 배송정보' AS DVRY_TBL_NM
+                    , TBMODR.ORDN_INFO_ID
+                    , TBMODR.INFO_SQN
+                    , TBMODR.ENTP_INFO_ID
+                    , TBMODR.TRSPREQS_NO
+                    , '' AS PCSVCMP_PTRN_ID
+                    , '' AS PCSVCMP_NM
+                    , TBMODR.MAINNB_NO
+                    , TBMODR.RCAR_NM        AS RECV
+                    , TBMODR.RCAR_CNPLONE   AS RECV_CNPLONE
+                    , TBMODR.RECV_CNPLTWO
+                    , TBMODR.RECV_ZPCD
+                    , TBMODR.RECV_ADR
+                    , TBMODR.RECV_DTAD
+                    , CASE WHEN ROWNUM = 1 THEN TBMODR.DVRYNONE ELSE 0 END DVRYNONE
+                FROM <include refid="MARKET"/>TB_BOX_MKT_ORDER_DVRY_R TBMODR
+                WHERE TBMODR.ORDN_INFO_ID = #{ordnInfoId}
+                UNION ALL
+                SELECT
+                    '구매자수령 배송정보' AS DVRY_TBL_NM
+                    , TBMOUR.ORDN_INFO_ID
+                    , TBMOUR.INFO_SQN
+                    , '' AS ENTP_INFO_ID
+                    , '' AS TRSPREQS_NO
+                    , '' AS PCSVCMP_PTRN_ID
+                    , '' AS PCSVCMP_NM
+                    , '' AS MAINNB_NO
+                    , (SELECT TBMERR.RCAR_NM FROM <include refid="MARKET"/>TB_BOX_MKT_ESM_RCAR_R TBMERR INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_ESM_INF_M TBMEIM ON TBMEIM.ESTT_INFO_ID = TBMERR.ESTT_INFO_ID WHERE TBMEIM.ORDN_INFO_ID = TBMOUR.ORDN_INFO_ID) AS RECV
+                    , '' AS RECV_CNPLONE
+                    , '' AS RECV_CNPLTWO
+                    , TBMOUR.RECV_ZPCD
+                    , TBMOUR.RECV_ADR
+                    , TBMOUR.RECV_DTAD
+                    , 0 AS DVRYNONE
+                FROM <include refid="MARKET"/>TB_BOX_MKT_ORDER_UDVR_R TBMOUR
+                WHERE TBMOUR.ORDN_INFO_ID = #{ordnInfoId}
+                UNION ALL
+                SELECT
+                    '직접배송•무료배송 배송정보' AS DVRY_TBL_NM
+                    , TBMOPR.ORDN_INFO_ID
+                    , TBMOPR.INFO_SQN
+                    , '' AS ENTP_INFO_ID
+                    , '' AS TRSPREQS_NO
+                    , TBMOPR.PCSVCMP_PTRN_ID
+                    , CASE
+                        WHEN TBMOPR.PCSVCMP_PTRN_ID = 'ODS01013' THEN TBMOPR.PCSVCMP_NM
+                        ELSE (SELECT COM_CD_NM FROM <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D WHERE COM_CD_ID = TBMOPR.PCSVCMP_PTRN_ID)
+                        END AS PCSVCMP_NM
+                    , TBMOPR.MAINNB_NO
+                    , TBMOPR.RCAR_NM        AS RECV
+                    , TBMOPR.RCAR_CNPLONE   AS RECV_CNPLONE
+                    , TBMOPR.RECV_CNPLTWO
+                    , TBMOPR.RECV_ZPCD
+                    , TBMOPR.RECV_ADR
+                    , TBMOPR.RECV_DTAD
+                    , TBMOPR.DVRYNONE
+                FROM <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDVRY_R TBMOPR
+                WHERE TBMOPR.ORDN_INFO_ID = #{ordnInfoId}
+            ) TBMDVRY ON TBMDVRY.ORDN_INFO_ID = TBMOPR.ORDN_INFO_ID AND TBMDVRY.INFO_SQN = TBMOPR.INFO_SQN
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_DVRY_INF_M TBMDIM ON TBMDIM.ENTP_INFO_ID = TBMDVRY.ENTP_INFO_ID
+        WHERE 1 = 1
+            AND TBMOPR.ORDN_INFO_ID = #{ordnInfoId}
+        ORDER BY TBMOPR.INFO_SQN
+    </select>
+
+    <select id="selectMyOrderProductList" parameterType="RequestSearchMyOrderVO" resultType="SummarySalesProductVO">
+        SELECT
+            TBMOPR.ORDN_INFO_ID
+            , TBMOPR.INFO_SQN
+            , TBMOPR.ORDN_PTRN_ID
+
+            , TBMOPR.PDF_CTGY_ID
+            , TBMCC.TMS5_CLSF_NM AS PDF_CTGY_NM
+
+            , TBMOPR.PDF_NM
+            , TBMOPR.QTY
+            , TBMOPR.PDF_PRC
+            , TBMOPR.TTAL_AMT
+            , TBMOPR.DVRY_PTRN_ID
+            , TBMOPR.DVRY_INFO_ID
+            , TBMOPR.ORDN_STTS_ID
+            , TBMOPR.PDF_INFO_ID
+            , TBMOPR.RGSN_USER_ID
+            , TBMOPR.RGSN_TS
+            , TBMOPR.AMNN_USER_ID
+            , TBMOPR.AMNN_TS
+
+            , TBMOIM.SELR_USIS_ID
+            , TBMOIM.SELR_ID
+            , TBMFIM.BPLC_NM AS SELR_USIS_NM
+            , TBMFIM.RPRSNTV_NM
+            , TBMSIM.MMBRTYPE_ID
+
+            , TBMOIM.PUCS_USIS_ID
+            , TBMOIM.PUCS_ID
+            , TBMFIMM.BPLC_NM AS PUCS_USIS_NM
+
+            , TBMOPR.ORDN_STTS_ID
+            , TBMPIM.AGEN_INF_ID
+            , TBMPSL.PRC_DSCS_YN
+            , TBMPFR.FILE_ID AS IMG_FILE_ID
+
+            , TBMDVRY.DVRYNONE
+            , TBMDVRY.DVRY_TBL_NM
+            , TBMDIM.ENTP_NM AS ENTP_NM
+            , TBMDVRY.ENTP_INFO_ID
+            , TBMDVRY.TRSPREQS_NO
+            , TBMDVRY.PCSVCMP_PTRN_ID
+            , (SELECT COM_CD_NM FROM <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D WHERE COM_CD_ID = TBMDVRY.PCSVCMP_PTRN_ID) AS PCSVCMP_PTRN_NM
+            , CASE
+                WHEN TBMDVRY.PCSVCMP_PTRN_ID = 'ODS01013' THEN TBMDVRY.PCSVCMP_NM
+                ELSE (SELECT COM_CD_NM FROM <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D WHERE COM_CD_ID = TBMDVRY.PCSVCMP_PTRN_ID)
+                END AS PCSVCMP_NM
+            , TBMDVRY.MAINNB_NO
+            , TBMDVRY.RECV
+            , TBMDVRY.RECV_CNPLONE
+            , TBMDVRY.RECV_CNPLTWO
+            , TBMDVRY.RECV_ZPCD
+            , TBMDVRY.RECV_ADR
+            , TBMDVRY.RECV_DTAD
+
+            , (SELECT CASE WHEN COUNT(1) > 0 THEN 'Y' ELSE 'N' END
+                FROM <include refid="MARKET"/>TB_BOX_MKT_PDF_REV_R
+                WHERE PDF_ODR_ID = TBMOPR.ORDN_INFO_ID AND PDF_INFO_ID = TBMOPR.PDF_INFO_ID) AS IS_REVIEWED
+
+            , TBMEIM.ESTT_INFO_ID
+
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDF_R TBMOPR
+
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_CTGY_C TBMCC ON TBMCC.CTGY_ID = TBMOPR.PDF_CTGY_ID
+
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_ORDER_INF_M TBMOIM ON TBMOPR.ORDN_INFO_ID = TBMOIM.ORDN_INFO_ID
+
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_ESM_INF_M TBMEIM ON TBMEIM.ORDN_INFO_ID = TBMOPR.ORDN_INFO_ID
+
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_FFPC_INF_M TBMFIM ON TBMFIM.UTLINSTT_ID = TBMOIM.SELR_USIS_ID
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_SELR_INF_M TBMSIM ON TBMSIM.SELR_USIS_ID = TBMOIM.SELR_USIS_ID
+
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_FFPC_INF_M TBMFIMM ON TBMFIMM.UTLINSTT_ID = TBMOIM.PUCS_USIS_ID
+
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_INF_M TBMPIM ON TBMPIM.PDF_INFO_ID = TBMOPR.PDF_INFO_ID
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_SAL_L TBMPSL ON TBMPSL.PDF_INFO_ID = TBMOPR.PDF_INFO_ID
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_FIE_R TBMPFR ON TBMPFR.PDF_INFO_ID = TBMOPR.PDF_INFO_ID AND TBMPFR.INFO_SQN = 1 AND TBMPFR.FILE_PTRN_ID = 'GDS05001'
+
+            INNER JOIN (
+                SELECT
+                    '화물서비스 배송정보' AS DVRY_TBL_NM
+                    , TBMODR.ORDN_INFO_ID
+                    , TBMODR.INFO_SQN
+                    , TBMODR.ENTP_INFO_ID
+                    , TBMODR.TRSPREQS_NO
+                    , '' AS PCSVCMP_PTRN_ID
+                    , '' AS PCSVCMP_NM
+                    , TBMODR.MAINNB_NO
+                    , TBMODR.RCAR_NM       AS RECV
+                    , TBMODR.RCAR_CNPLONE  AS RECV_CNPLONE
+                    , TBMODR.RECV_CNPLTWO
+                    , TBMODR.RECV_ZPCD
+                    , TBMODR.RECV_ADR
+                    , TBMODR.RECV_DTAD
+                    , CASE
+                        WHEN TBMOPR.ORDN_PTRN_ID = 'GDS03004' /* 견적상품(GDS03004) */
+                        THEN
+                            CASE WHEN ROWNUM = 1 THEN TBMODR.DVRYNONE ELSE 0 END
+                        ELSE
+                            TBMODR.DVRYNONE
+                        END DVRYNONE
+                FROM <include refid="MARKET"/>TB_BOX_MKT_ORDER_DVRY_R TBMODR
+                    INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDF_R TBMOPR ON TBMOPR.ORDN_INFO_ID = TBMODR.ORDN_INFO_ID AND TBMOPR.INFO_SQN = TBMODR.INFO_SQN
+                WHERE TBMODR.ORDN_INFO_ID IN
+                    <foreach collection="ordnInfoIds" item="item" index="index" separator="," open="(" close=")">
+                        #{item}
+                    </foreach>
+                UNION ALL
+                SELECT
+                    '구매자수령 배송정보' AS DVRY_TBL_NM
+                    , TBMOUR.ORDN_INFO_ID
+                    , TBMOUR.INFO_SQN
+                    , '' AS ENTP_INFO_ID
+                    , '' AS TRSPREQS_NO
+                    , '' AS PCSVCMP_PTRN_ID
+                    , '' AS PCSVCMP_NM
+                    , '' AS MAINNB_NO
+                    , (SELECT TBMERR.RCAR_NM FROM <include refid="MARKET"/>TB_BOX_MKT_ESM_RCAR_R TBMERR INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_ESM_INF_M TBMEIM ON TBMEIM.ESTT_INFO_ID = TBMERR.ESTT_INFO_ID WHERE TBMEIM.ORDN_INFO_ID = TBMOUR.ORDN_INFO_ID) AS RECV
+                    , '' AS RECV_CNPLONE
+                    , '' AS RECV_CNPLTWO
+                    , TBMOUR.RECV_ZPCD
+                    , TBMOUR.RECV_ADR
+                    , TBMOUR.RECV_DTAD
+                    , 0 AS DVRYNONE
+                FROM <include refid="MARKET"/>TB_BOX_MKT_ORDER_UDVR_R TBMOUR
+                WHERE TBMOUR.ORDN_INFO_ID IN
+                    <foreach collection="ordnInfoIds" item="item" index="index" separator="," open="(" close=")">
+                        #{item}
+                    </foreach>
+                UNION ALL
+                SELECT
+                    '직접배송•무료배송 배송정보' AS DVRY_TBL_NM
+                    , TBMOPDR.ORDN_INFO_ID
+                    , TBMOPDR.INFO_SQN
+                    , '' AS ENTP_INFO_ID
+                    , '' AS TRSPREQS_NO
+                    , TBMOPDR.PCSVCMP_PTRN_ID
+                    , CASE
+                        WHEN TBMOPDR.PCSVCMP_PTRN_ID = 'ODS01013' THEN TBMOPDR.PCSVCMP_NM
+                        ELSE (SELECT COM_CD_NM FROM <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D WHERE COM_CD_ID = TBMOPDR.PCSVCMP_PTRN_ID)
+                        END AS PCSVCMP_NM
+                    , TBMOPDR.MAINNB_NO
+                    , TBMOPDR.RCAR_NM       AS RECV
+                    , TBMOPDR.RCAR_CNPLONE  AS RECV_CNPLONE
+                    , TBMOPDR.RECV_CNPLTWO
+                    , TBMOPDR.RECV_ZPCD
+                    , TBMOPDR.RECV_ADR
+                    , TBMOPDR.RECV_DTAD
+                    , CASE
+                        WHEN TBMOPR.ORDN_PTRN_ID = 'GDS03004' /* 견적상품(GDS03004) */
+                        THEN
+                            CASE WHEN ROWNUM = 1 THEN TBMOPDR.DVRYNONE ELSE 0 END
+                        ELSE
+                            TBMOPDR.DVRYNONE
+                        END DVRYNONE
+                FROM <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDVRY_R TBMOPDR
+                    INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDF_R TBMOPR ON TBMOPR.ORDN_INFO_ID = TBMOPDR.ORDN_INFO_ID AND TBMOPR.INFO_SQN = TBMOPDR.INFO_SQN
+                WHERE TBMOPR.ORDN_INFO_ID IN
+                    <foreach collection="ordnInfoIds" item="item" index="index" separator="," open="(" close=")">
+                        #{item}
+                    </foreach>
+            ) TBMDVRY ON TBMDVRY.ORDN_INFO_ID = TBMOPR.ORDN_INFO_ID
+                    AND TBMDVRY.INFO_SQN = TBMOPR.INFO_SQN
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_DVRY_INF_M TBMDIM ON TBMDIM.ENTP_INFO_ID = TBMDVRY.ENTP_INFO_ID
+        WHERE 1 = 1
+            AND TBMOPR.ORDN_INFO_ID IN
+            <foreach collection="ordnInfoIds" item="item" index="index" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        ORDER BY TBMOPR.ORDN_INFO_ID, TBMOPR.INFO_SQN
+    </select>
+
+</mapper>

@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ibk.sb.restapi.biz.service.admin.repo.AdminAgencyRepo">
+
+    <sql id="MARKET"><include refid="com.ibk.sb.restapi.biz.service.common.repo.SchemaRepo.MARKET"/></sql>
+
+    <!--    PagingMapper ID-->
+    <sql id="pagingHeader"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageHeader"/></sql>
+    <sql id="pagingFooter"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageFooter"/></sql>
+
+    <!-- 에이전시 등록 승인 요청 목록 -->
+    <select id="selectAgencyAuthList" parameterType="RequestAgencySearchVO" resultType="AdminAgencyVO">
+        <include refid="pagingHeader"/>
+        SELECT
+            A.AGEN_REQ_ID,
+            A.SELR_USIS_ID,
+            B.BPLC_NM,
+            A.PCSNSTTS_ID,
+            C.COM_CD_NM AS PCSNSTTS_NM,
+            A.RGSN_USER_ID,
+            A.RGSN_TS
+        FROM <include refid="MARKET"/>TB_BOX_MKT_AGEN_REQ_M  A
+        INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_FFPC_INF_M B ON (A.SELR_USIS_ID = B.UTLINSTT_ID)
+        LEFT OUTER JOIN <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D C ON (A.PCSNSTTS_ID = C.COM_CD_ID)
+        WHERE 1 = 1
+        <if test="searchCompanyName != null and !searchCompanyName.equals('')">
+        AND (
+            UPPER(B.BPLC_NM) LIKE '%' || UPPER(#{searchCompanyName}) || '%'
+        )
+        </if>
+        <if test="statusCode != null and statusCode.equals('request')">
+        AND A.PCSNSTTS_ID = 'COC01001'
+        </if>
+        <if test="statusCode != null and statusCode.equals('reject')">
+        AND A.PCSNSTTS_ID = 'COC01004'
+        </if>
+        <if test="statusCode != null and statusCode.equals('approved')">
+        AND A.PCSNSTTS_ID = 'COC01003'
+        </if>
+        <if test="statusCode != null and statusCode.equals('roleoff')">
+        AND A.PCSNSTTS_ID IN ('COC01005', 'COC01006')
+        </if>
+        ORDER BY A.RGSN_TS DESC
+        <include refid="pagingFooter"/>
+    </select>
+
+    <!-- 에이전시 등록 승인 요청 정보 갱신 -->
+    <update id="updateAgencyAuth">
+        UPDATE <include refid="MARKET"/>TB_BOX_MKT_AGEN_REQ_M
+        SET
+            PCSNSTTS_ID = #{pcsnsttsId}
+            , AMNN_USER_ID  = #{loginUserId}
+            , AMNN_TS       = CURRENT_TIMESTAMP
+        WHERE
+            AGEN_REQ_ID = #{agenReqId}
+    </update>
+
+    <!-- 판매자 정보 상태 (에이전시) 변경 -->
+    <update id="updateSellerType">
+        UPDATE <include refid="MARKET"/>TB_BOX_MKT_SELR_INF_M
+        SET
+            MMBRTYPE_ID = #{mmbrtypeId}
+            , AMNN_USER_ID  = #{loginUserId}
+            , AMNN_TS       = CURRENT_TIMESTAMP
+        WHERE
+            SELR_USIS_ID = #{selrUsisId}
+    </update>
+
+    <!-- 마이페이지 > 에이전시 요청 이력 등록 -->
+    <insert id="addAgencyInfMyHistory" parameterType="AdminAgencyVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_AGEN_REQ_H(
+            AGEN_REQ_ID
+            ,MDPH_SQN
+            ,PCSNSTTS_ID
+            ,PCSN_CON
+            ,RGSN_USER_ID
+            ,RGSN_TS
+        ) SELECT
+             #{agenReqId}
+            ,(NVL(MAX(MDPH_SQN),0) + 1)
+            , #{pcsnsttsId}
+            , #{pcsnCon}
+            , #{loginUserId}
+            , CURRENT_TIMESTAMP
+        FROM <include refid="MARKET"/>TB_BOX_MKT_AGEN_REQ_H WHERE AGEN_REQ_ID = #{agenReqId}
+    </insert>
+
+</mapper>

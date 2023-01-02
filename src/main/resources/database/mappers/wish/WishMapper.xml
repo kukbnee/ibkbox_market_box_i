@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ibk.sb.restapi.biz.service.wishlist.repo.WishListRepo">
+
+    <sql id="MARKET"><include refid="com.ibk.sb.restapi.biz.service.common.repo.SchemaRepo.MARKET"/></sql>
+
+    <!--    PagingMapper ID-->
+    <sql id="pagingHeader"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageHeader"/></sql>
+    <sql id="pagingFooter"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageFooter"/></sql>
+
+    <!-- 위시리스트 조회 -->
+    <select id="selectWishList" parameterType="RequestSearchWishListVO" resultType="SummaryWishListVO">
+        <include refid="pagingHeader"/>
+        SELECT
+            TBMPWR.PUCS_USIS_ID,
+            TBMPWR.PUCS_ID,
+            TBMPWR.PDF_INFO_ID,
+            TBMPSL.PDF_PRC,
+            TBMPSL.COM_PRCUT_ID,
+            TBMCCDCPI.COM_CD_NM AS PDF_STTS_NAME,
+            TBMPSL.SALE_PRC,
+            TBMPSL.PRC_DSCS_YN,
+            TBMPSL.ESTT_USE_EN,
+            TBMPFR.FILE_ID AS IMG_FILE_ID,
+            TBMPIM.SELR_USIS_ID,
+            TBMPIM.PDF_NM,
+            TBMPIM.PDF_STTS_ID,
+            TBMPIM.PDF_PGRS_YN,
+            TBMCCDPSI.COM_CD_NM AS COM_PRCUT_NAME,
+            TBMFIM.BPLC_NM,
+            CASE WHEN TBMPIM.AGEN_INF_ID IS NULL THEN 'N' ELSE 'Y' END AS AGEN_PDF_YN,
+            TBMPIM.BRF_DESC,
+            TBMPSL.ORDN_QTY_LMTN_USYN,
+            TBMPSL.ORDN_MNMM_QTY,
+            TBMPSL.ORDN_MXMM_QTY
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_PDF_WISH_R TBMPWR
+            INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_INF_M TBMPIM ON TBMPWR.PDF_INFO_ID = TBMPIM.PDF_INFO_ID
+            INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_SAL_L TBMPSL ON TBMPSL.PDF_INFO_ID = TBMPWR.PDF_INFO_ID
+            INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D TBMCCDCPI ON TBMCCDCPI.COM_CD_ID = TBMPSL.COM_PRCUT_ID
+            INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D TBMCCDPSI ON TBMCCDPSI.COM_CD_ID = TBMPIM.PDF_STTS_ID
+            INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_FIE_R TBMPFR ON TBMPFR.PDF_INFO_ID = TBMPWR.PDF_INFO_ID
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_FFPC_INF_M TBMFIM ON TBMFIM.UTLINSTT_ID = TBMPIM.SELR_USIS_ID
+        WHERE 1=1
+          AND TBMPIM.PDF_PGRS_YN = #{pdfPgrsYn}
+          AND TBMPIM.PDF_STTS_ID = #{pdfSttsId}
+          AND TBMPIM.DEL_YN = 'N'
+          AND TBMPFR.INFO_SQN = 1
+          AND TBMPWR.PUCS_USIS_ID = #{loginUtlinsttId}
+          <if test="pdfInfoId != null and !pdfInfoId.equals('')">
+          AND TBMPWR.PDF_INFO_ID = #{pdfInfoId}
+          </if>
+        ORDER BY TBMPWR.RGSN_TS DESC
+        <include refid="pagingFooter"/>
+    </select>
+
+    <!-- 위시리스트 등록 -->
+    <insert id="insertWishList" parameterType="RequestSearchWishListVO">
+        INSERT INTO
+            <include refid="MARKET"/>TB_BOX_MKT_PDF_WISH_R(PUCS_USIS_ID, PUCS_ID, PDF_INFO_ID, RGSN_USER_ID, RGSN_TS)
+        SELECT
+            #{loginUtlinsttId}
+            ,#{loginUserId}
+            ,TBMPIM.PDF_INFO_ID
+            ,#{loginUserId}
+            ,CURRENT_TIMESTAMP
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_PDF_INF_M TBMPIM
+        WHERE 1=1
+            AND TBMPIM.PDF_INFO_ID = #{pdfInfoId}
+            AND TBMPIM.PDF_PGRS_YN = #{pdfPgrsYn}
+            AND TBMPIM.PDF_STTS_ID = #{pdfSttsId}
+            AND TBMPIM.DEL_YN = 'N'
+    </insert>
+
+    <!-- 위시리스트 삭제 -->
+    <delete id="deleteWish" parameterType="RequestSearchWishListVO">
+        DELETE FROM <include refid="MARKET"/>TB_BOX_MKT_PDF_WISH_R
+        WHERE 1=1
+            AND PUCS_USIS_ID = #{loginUtlinsttId}
+            AND PDF_INFO_ID = #{pdfInfoId}
+    </delete>
+</mapper>

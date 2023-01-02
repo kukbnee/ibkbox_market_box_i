@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ibk.sb.restapi.biz.service.batch.repo.BatchRepo">
+
+    <sql id="MARKET"><include refid="com.ibk.sb.restapi.biz.service.common.repo.SchemaRepo.MARKET"/></sql>
+
+    <!--    가입 사업자 주요 정보 갱신 -->
+    <update id="batchMktFfpcInfo" parameterType="CompanyVO">
+        MERGE INTO <include refid="MARKET"/>TB_BOX_MKT_FFPC_INF_M TBMFIM
+
+        USING DUAL ON (TBMFIM.UTLINSTT_ID = #{utlinsttId})
+
+        WHEN MATCHED THEN
+            UPDATE SET
+                TBMFIM.BPLC_NM          = #{bplcNm}
+                , TBMFIM.RPRSNTV_NM     = #{rprsntvNm}
+                , TBMFIM.FOND_DE        = #{fondDe}
+        WHEN NOT MATCHED THEN
+            INSERT
+                (
+                    TBMFIM.UTLINSTT_ID
+                    , TBMFIM.BPLC_NM
+                    , TBMFIM.RPRSNTV_NM
+                    , TBMFIM.FOND_DE
+                    , TBMFIM.RGSN_TS
+                )
+            VALUES
+                (
+                    #{utlinsttId}
+                    , #{bplcNm}
+                    , #{rprsntvNm}
+                    , #{fondDe}
+                    , CURRENT_TIMESTAMP
+                )
+    </update>
+
+    <!--    판매자 정보 갱신   -->
+    <update id="batchSelrInfo" parameterType="SellerInfoVO">
+        MERGE INTO <include refid="MARKET"/>TB_BOX_MKT_SELR_INF_M TBMSIM
+
+        USING DUAL ON (TBMSIM.SELR_USIS_ID = #{selrUsisId})
+
+        WHEN NOT MATCHED THEN
+            INSERT
+                (
+                    TBMSIM.SELR_USIS_ID
+                    , TBMSIM.MMBRTYPE_ID
+                    , TBMSIM.MMBRSTTS_ID
+                    , TBMSIM.USE_YN
+                    , TBMSIM.RGSN_TS
+                    , TBMSIM.AMNN_TS
+                )
+            VALUES
+                (
+                    #{selrUsisId}
+                    , #{mmbrtypeId}
+                    , #{mmbrsttsId}
+                    , 'Y'
+                    , CURRENT_TIMESTAMP
+                    , CURRENT_TIMESTAMP
+                )
+    </update>
+
+    <!--    구매자 정보 등록   -->
+    <update id="batchOrderInfo" parameterType="string">
+        MERGE INTO <include refid="MARKET"/>TB_BOX_MKT_PUCS_INF_M TBMPIM
+
+        USING DUAL ON (TBMPIM.PUCS_USIS_ID = #{utlinsttId})
+
+        WHEN NOT MATCHED THEN
+            INSERT
+                (
+                    TBMPIM.PUCS_USIS_ID
+                    , TBMPIM.MMBRSTTS_ID
+                    , TBMPIM.RGSN_TS
+                    , TBMPIM.AMNN_TS
+                )
+            VALUES
+                (
+                    #{utlinsttId}
+                    , #{mmbrsttsId}
+                    , CURRENT_TIMESTAMP
+                    , CURRENT_TIMESTAMP
+                )
+    </update>
+</mapper>

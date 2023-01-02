@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ibk.sb.restapi.biz.service.seal.repo.SealRepo">
+
+    <sql id="MARKET"><include refid="com.ibk.sb.restapi.biz.service.common.repo.SchemaRepo.MARKET"/></sql>
+
+    <!--    인감 정보 조회-->
+    <select id="selectSealInfo" parameterType="string" resultType="SealVo">
+        SELECT
+            UTLINSTT_ID
+            , RGSL_IMG_FILE_ID
+            , RGSN_USER_ID
+            , RGSN_TS
+            , AMNN_USER_ID
+            , AMNN_TS
+
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_RGSL_FILE_R
+
+        WHERE 1 = 1
+            AND UTLINSTT_ID = #{utlinsttId}
+    </select>
+
+    <!--    인감 정보 등록 -->
+    <insert id="insertSealInfo" parameterType="SealVo">
+
+        <selectKey keyProperty="amnnTs" resultType="java.sql.Timestamp" order="AFTER">
+            SELECT AMNN_TS FROM <include refid="MARKET"/>TB_BOX_MKT_RGSL_FILE_R WHERE UTLINSTT_ID = #{utlinsttId}
+        </selectKey>
+
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_RGSL_FILE_R
+            (
+                UTLINSTT_ID
+                , RGSL_IMG_FILE_ID
+                , RGSN_USER_ID
+                , RGSN_TS
+                , AMNN_USER_ID
+                , AMNN_TS
+            )
+        VALUES
+            (
+                #{utlinsttId}
+                , #{rgslImgFileId}
+                , #{rgsnUserId}
+                , CURRENT_TIMESTAMP
+                , #{amnnUserId}
+                , CURRENT_TIMESTAMP
+            )
+    </insert>
+
+    <!--    인감 정보 삭제    -->
+    <delete id="deleteSealInfo" parameterType="string">
+        DELETE FROM <include refid="MARKET"/>TB_BOX_MKT_RGSL_FILE_R
+        WHERE UTLINSTT_ID = #{utlinsttId}
+    </delete>
+
+</mapper>

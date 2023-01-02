@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ibk.sb.restapi.biz.service.user.repo.UserRepo">
+
+    <sql id="MARKET"><include refid="com.ibk.sb.restapi.biz.service.common.repo.SchemaRepo.MARKET"/></sql>
+
+    <!--    PagingMapper ID-->
+    <sql id="pagingHeader"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageHeader"/></sql>
+    <sql id="pagingFooter"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageFooter"/></sql>
+
+    <!--    기업사업장 주요 정보 -->
+    <select id="selectUserCompanyInfo" parameterType="string" resultType="CompanyVO">
+        SELECT
+            UTLINSTT_ID
+            , BPLC_NM
+            , RPRSNTV_NM
+            , FOND_DE
+            , RGSN_TS
+            , (TO_NUMBER(TO_CHAR(SYSDATE, 'YYYY')) - TO_NUMBER(SUBSTR(FOND_DE, 0, 4)) + 1) AS YEAR_CNT
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_FFPC_INF_M
+        WHERE 1 = 1
+            <if test="utlinsttId != null || !utlinsttId.equals('')">
+                AND UTLINSTT_ID = #{utlinsttId}
+            </if>
+    </select>
+
+
+
+</mapper>

@@ -1,0 +1,237 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ibk.sb.restapi.biz.service.admin.repo.AdminEventRepo">
+
+    <sql id="MARKET"><include refid="com.ibk.sb.restapi.biz.service.common.repo.SchemaRepo.MARKET"/></sql>
+
+    <!--    PagingMapper ID-->
+    <sql id="pagingHeader"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageHeader"/></sql>
+    <sql id="pagingFooter"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageFooter"/></sql>
+
+    <sql id="eventProductList">
+        SELECT
+            TBMEPL.EVNT_INF_ID
+            ,TBMPIM.PDF_INFO_ID
+            ,TBMPIM.SELR_USIS_ID
+            ,TBMPIM.PDF_CTGY_ID
+            ,'{'||TBMCC.TMS1_CLSF_NM||'},{'||TBMCC.TMS2_CLSF_NM||'},{'||TBMCC.TMS3_CLSF_NM||'},{'||TBMCC.TMS4_CLSF_NM||'},{'||TBMCC.TMS5_CLSF_NM||'}' AS CTGY_DATA
+            ,TBMPIM.PDF_NM
+            ,TBMPIM.MDLNM
+            ,TBMPIM.BRF_DESC
+            ,TBMPIM.BRF_SUB_DESC
+            ,CASE WHEN TBMPIM.AGEN_INF_ID IS NULL THEN 'N' ELSE 'Y' END AS PDF_AGEN_STATE
+            ,TBMPSL.PDF_PRC
+            ,TBMPSL.COM_PRCUT_ID
+            ,TBMCCPR.COM_CD_NM AS COM_PRCUT_NM
+            ,TBMPSL.COM_PDFUT_ID
+            ,TBMCCPD.COM_CD_NM AS COM_PDFUT_NM
+            ,TBMPSL.SALE_PRC
+            ,TBMPSL.PRC_DSCS_YN
+            ,TBMPSL.ESTT_USE_EN
+            ,TBMFAM.FILE_ID AS IMG_FILE_ID
+            ,TBMPSL.ORDN_QTY_LMTN_USYN
+            ,TBMPSL.ORDN_MNMM_QTY
+            ,TBMPSL.ORDN_MXMM_QTY_YN
+            ,TBMPSL.ORDN_MXMM_QTY
+            ,TBMFIM.BPLC_NM
+        FROM <include refid="MARKET"/>TB_BOX_MKT_EVNT_PDF_L TBMEPL
+        INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_INF_M TBMPIM ON TBMPIM.PDF_INFO_ID = TBMEPL.PDF_INFO_ID
+        INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_SAL_L TBMPSL ON TBMPIM.PDF_INFO_ID = TBMPSL.PDF_INFO_ID
+        INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D TBMCCPR ON TBMPSL.COM_PRCUT_ID = TBMCCPR.COM_CD_ID
+        INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D TBMCCPD ON TBMPSL.COM_PDFUT_ID = TBMCCPD.COM_CD_ID
+        INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_CTGY_C TBMCC ON TBMCC.CTGY_ID = TBMPIM.PDF_CTGY_ID
+        LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_FFPC_INF_M TBMFIM ON TBMFIM.UTLINSTT_ID = TBMPIM.SELR_USIS_ID
+        LEFT JOIN (
+            SELECT * FROM (
+                SELECT
+                    ROW_NUMBER() OVER (PARTITION BY PDF_INFO_ID ORDER BY INFO_SQN ASC) AS RNK,
+                    A.*
+                FROM <include refid="MARKET"/>TB_BOX_MKT_PDF_FIE_R A
+                WHERE 1 = 1
+                AND FILE_PTRN_ID = #{filePtrnId}
+            )
+            WHERE RNK = 1
+        ) TBMPFR ON TBMPFR.PDF_INFO_ID = TBMPIM.PDF_INFO_ID
+        LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_FILE_ATCH_M TBMFAM ON TBMPFR.FILE_ID = TBMFAM.FILE_ID
+    </sql>
+
+    <select id="selectAdminEventProductList" parameterType="RequestEventSearchProductVO" resultType="EventProductVO">
+        <include refid="pagingHeader"/>
+        <include refid="eventProductList" />
+        WHERE 1=1
+        <choose>
+            <when test="everyEventProductYn">
+                AND TBMEPL.PCSNSTTS_ID NOT IN ('ETS01001', 'ETS01002')
+            </when>
+            <otherwise>
+                AND TBMEPL.EVNT_INF_ID = #{evntInfId}   /* 이벤트 ID */
+                AND TBMEPL.PCSNSTTS_ID = #{pcsnsttsId}  /* 이벤트 신정 상태 ID */
+            </otherwise>
+        </choose>
+        AND TBMPIM.PDF_STTS_ID = #{pdfSttsId}   /* 상품상태 ID */
+        AND TBMPIM.DEL_YN = 'N'
+        <if test='searchType != null and searchType.equals("")'>
+            AND (TBMFIM.BPLC_NM LIKE '%' || #{searchTtl} || '%' OR TBMPIM.PDF_NM LIKE '%' || #{searchTtl} || '%')
+        </if>
+        <if test='searchType != null and searchType.equals("bplcNm")'>
+            AND TBMFIM.BPLC_NM LIKE '%' || #{searchTtl} || '%'
+        </if>
+        <if test='searchType != null and searchType.equals("pdfNm")'>
+            AND TBMPIM.PDF_NM LIKE '%' || #{searchTtl} || '%'
+        </if>
+        ORDER BY TBMEPL.EXPU_SQC ASC
+        <include refid="pagingFooter"/>
+    </select>
+
+
+    <select id="selectAdminEventAllProductList" parameterType="RequestEventSearchProductVO" resultType="EventProductVO">
+        <include refid="pagingHeader"/>
+        SELECT
+            TBMEPL.EVNT_INF_ID
+            ,TBMPIM.PDF_INFO_ID
+            ,TBMPIM.SELR_USIS_ID
+            ,TBMPIM.PDF_CTGY_ID
+            ,'{'||TBMCC.TMS1_CLSF_NM||'},{'||TBMCC.TMS2_CLSF_NM||'},{'||TBMCC.TMS3_CLSF_NM||'},{'||TBMCC.TMS4_CLSF_NM||'},{'||TBMCC.TMS5_CLSF_NM||'}' AS CTGY_DATA
+            ,TBMPIM.PDF_NM
+            ,TBMPIM.MDLNM
+            ,TBMPIM.BRF_DESC
+            ,TBMPIM.BRF_SUB_DESC
+            ,CASE WHEN TBMPIM.AGEN_INF_ID IS NULL THEN 'N' ELSE 'Y' END AS PDF_AGEN_STATE
+            ,(
+                SELECT
+                    TBMFIM_S.BPLC_NM
+                FROM
+                    <include refid="MARKET"/>TB_BOX_MKT_AGEN_INF_M TBMAIM_S
+                    INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_FFPC_INF_M TBMFIM_S ON TBMAIM_S.REC_USIS_ID = TBMFIM_S.UTLINSTT_ID
+                WHERE 1=1
+                    AND TBMAIM_S.AGEN_INF_ID = TBMPIM.AGEN_INF_ID
+                    AND TBMPIM.AGEN_INF_ID IS NOT NULL
+            ) AS PDF_AGEN_ORG_BPLC_NM
+            ,TBMPSL.PDF_PRC
+            ,TBMPSL.COM_PRCUT_ID
+            ,TBMCCPR.COM_CD_NM AS COM_PRCUT_NM
+            ,TBMPSL.COM_PDFUT_ID
+            ,TBMCCPD.COM_CD_NM AS COM_PDFUT_NM
+            ,TBMPSL.SALE_PRC
+            ,TBMPSL.PRC_DSCS_YN
+            ,TBMPSL.ESTT_USE_EN
+            ,TBMFAM.FILE_ID AS IMG_FILE_ID
+            ,TBMPSL.ORDN_QTY_LMTN_USYN
+            ,TBMPSL.ORDN_MNMM_QTY
+            ,TBMPSL.ORDN_MXMM_QTY_YN
+            ,TBMPSL.ORDN_MXMM_QTY
+            ,TBMFIM.BPLC_NM
+            ,TBMEPL.EVNT_INF_ID
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_PDF_INF_M TBMPIM
+            INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_SAL_L TBMPSL ON TBMPIM.PDF_INFO_ID = TBMPSL.PDF_INFO_ID
+            INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D TBMCCPR ON TBMPSL.COM_PRCUT_ID = TBMCCPR.COM_CD_ID
+            INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D TBMCCPD ON TBMPSL.COM_PDFUT_ID = TBMCCPD.COM_CD_ID
+            INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_CTGY_C TBMCC ON TBMCC.CTGY_ID = TBMPIM.PDF_CTGY_ID
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_EVNT_PDF_L TBMEPL ON TBMEPL.PDF_INFO_ID = TBMPIM.PDF_INFO_ID
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_FFPC_INF_M TBMFIM ON TBMFIM.UTLINSTT_ID = TBMPIM.SELR_USIS_ID
+            LEFT JOIN (
+                SELECT * FROM (
+                SELECT
+                    ROW_NUMBER() OVER (PARTITION BY PDF_INFO_ID ORDER BY INFO_SQN ASC) AS RNK,
+                    A.*
+                FROM <include refid="MARKET"/>TB_BOX_MKT_PDF_FIE_R A
+                    WHERE 1 = 1
+                    AND FILE_PTRN_ID = #{filePtrnId}
+                )
+                WHERE RNK = 1
+            ) TBMPFR ON TBMPFR.PDF_INFO_ID = TBMPIM.PDF_INFO_ID
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_FILE_ATCH_M TBMFAM ON TBMPFR.FILE_ID = TBMFAM.FILE_ID
+        WHERE 1=1
+            AND TBMPIM.PDF_STTS_ID = #{pdfSttsId} /* 상품상태 ID */
+            AND TBMPIM.DEL_YN = 'N'
+            <if test='searchType != null and searchType.equals("")'>
+                AND (TBMFIM.BPLC_NM LIKE '%' || #{searchTtl} || '%' OR TBMPIM.PDF_NM LIKE '%' || #{searchTtl} || '%')
+            </if>
+            <if test='searchType != null and searchType.equals("bplcNm")'>
+                AND TBMFIM.BPLC_NM LIKE '%' || #{searchTtl} || '%'
+            </if>
+            <if test='searchType != null and searchType.equals("pdfNm")'>
+                AND TBMPIM.PDF_NM LIKE '%' || #{searchTtl} || '%'
+            </if>
+            AND EVNT_INF_ID IS NULL
+        ORDER BY TBMPIM.RGSN_TS DESC
+        <include refid="pagingFooter"/>
+    </select>
+
+    <update id="updateEventProductApproved">
+        UPDATE <include refid="MARKET"/>TB_BOX_MKT_EVNT_PDF_L
+        SET
+            PCSNSTTS_ID     = #{params.pcsnsttsId}
+            , AMNN_USER_ID  = #{params.amnnUserId}
+            , AMNN_TS       = CURRENT_TIMESTAMP
+        WHERE 1=1
+        AND EVNT_INF_ID = #{params.evntInfId}
+        AND PDF_INFO_ID = #{params.pdfInfoId}
+    </update>
+
+    <update id="insertEventProductApproved" parameterType="AdminEventProductVO">
+        <selectKey keyProperty="maxInfoSqn,maxExpuSqc" resultType="AdminEventProductVO" order="BEFORE">
+            SELECT MAX(INFO_SQN) + 1 as maxInfoSqn, MAX(EXPU_SQC) + 1 as maxExpuSqc
+            FROM <include refid="MARKET"/>TB_BOX_MKT_EVNT_PDF_L
+            WHERE EVNT_INF_ID = #{evntInfId}
+        </selectKey>
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_EVNT_PDF_L
+        (
+            EVNT_INF_ID
+            , PDF_INFO_ID
+            , INFO_SQN
+            , PCSNSTTS_ID
+            , EXPU_SQC
+            , RGSN_USER_ID
+            , RGSN_TS
+            , AMNN_USER_ID
+            , AMNN_TS
+            , RCIPPTRN_ID
+        )
+        VALUES
+        (
+            #{evntInfId}
+            , #{pdfInfoId}
+            , #{maxInfoSqn}
+            , #{pcsnsttsId}
+            , #{maxExpuSqc}
+            , #{rgsnUserId}
+            , CURRENT_TIMESTAMP
+            , #{amnnUserId}
+            , CURRENT_TIMESTAMP
+            , #{rcipptrnId}
+        )
+    </update>
+
+    <select id="selectEventProductApproved" resultType="AdminEventProductVO">
+        SELECT
+            RCIPPTRN_ID
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_EVNT_PDF_L
+        WHERE 1=1
+            AND EVNT_INF_ID = #{params.evntInfId}
+            AND PDF_INFO_ID = #{params.pdfInfoId}
+
+    </select>
+
+    <delete id="deleteEventProductApproved">
+        DELETE FROM <include refid="MARKET"/>TB_BOX_MKT_EVNT_PDF_L
+        WHERE 1=1
+        AND EVNT_INF_ID = #{params.evntInfId}
+        AND PDF_INFO_ID = #{params.pdfInfoId}
+    </delete>
+
+    <update id="updateEventProductSort">
+        UPDATE <include refid="MARKET"/>TB_BOX_MKT_EVNT_PDF_L
+        SET
+            EXPU_SQC     = #{params.expuSqc}
+            , AMNN_USER_ID  = #{params.amnnUserId}
+            , AMNN_TS       = CURRENT_TIMESTAMP
+        WHERE 1=1
+        AND EVNT_INF_ID = #{params.evntInfId}
+        AND PDF_INFO_ID = #{params.pdfInfoId}
+    </update>
+
+</mapper>

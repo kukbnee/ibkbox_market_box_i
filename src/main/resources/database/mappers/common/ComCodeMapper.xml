@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ibk.sb.restapi.biz.service.common.repo.ComCodeRepo">
+
+    <sql id="MARKET"><include refid="com.ibk.sb.restapi.biz.service.common.repo.SchemaRepo.MARKET"/></sql>
+
+    <!-- 공통 코드 그룹 목록 -->
+    <select id="searchComCodeGroupList" parameterType="string" resultType="SummaryComCodeGroupVO">
+        SELECT
+            TBMCGM.GRP_CD_ID
+             ,TBMCGM.GRP_CD_NM
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_COM_GRP_M TBMCGM
+        WHERE 1=1
+          AND TBMCGM.GRP_CD_ID LIKE '' || #{grpCdTag} || '%'
+        ORDER BY TBMCGM.GRP_CD_NM ASC;
+    </select>
+
+    <!-- 공통 코드 그룹 상세 목록 -->
+    <select id="searchComCodeList" parameterType="string" resultType="SummaryComCodeListVO">
+        SELECT
+            TBMCCD.COM_CD_ID
+             ,TBMCCD.GRP_CD_ID
+             ,TBMCCD.COM_CD_NM
+             ,TBMCCD.LNP_SQN
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D TBMCCD
+        WHERE 1=1
+          AND TBMCCD.GRP_CD_ID = #{grpCdId}
+          AND TBMCCD.USE_YN = 'Y'
+        ORDER BY TBMCCD.LNP_SQN ASC;
+    </select>
+
+</mapper>

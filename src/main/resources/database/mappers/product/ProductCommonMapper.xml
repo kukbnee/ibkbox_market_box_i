@@ -1,0 +1,426 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ibk.sb.restapi.biz.service.product.common.repo.ProductCommonRepo">
+
+    <sql id="MARKET"><include refid="com.ibk.sb.restapi.biz.service.common.repo.SchemaRepo.MARKET"/></sql>
+
+    <!--    PagingMapper ID-->
+    <sql id="pagingHeader"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageHeader"/></sql>
+    <sql id="pagingFooter"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageFooter"/></sql>
+
+    <select id="selectProductFileList" parameterType="string" resultType="ProductFileVO">
+        SELECT
+            TBMPFR.PDF_INFO_ID
+            , TBMPFR.FILE_ID
+            , TBMPFR.INFO_SQN
+            , TBMPFR.FILE_PTRN_ID
+            , TBMFAM.FILE_PATH
+            , TBMPFR.RGSN_USER_ID
+            , TBMPFR.RGSN_TS
+            , TBMPFR.AMNN_USER_ID
+            , TBMPFR.AMNN_TS
+        FROM
+             <include refid="MARKET"/>TB_BOX_MKT_PDF_FIE_R TBMPFR
+
+        LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_FILE_ATCH_M TBMFAM ON TBMFAM.FILE_ID = TBMPFR.FILE_ID
+
+        WHERE 1 = 1
+            <if test="pdfInfoId != null and !pdfInfoId.equals('')">
+                AND PDF_INFO_ID = #{pdfInfoId}
+            </if>
+            <if test="filePtrnId != null and !filePtrnId.equals('')">
+                AND FILE_PTRN_ID = #{filePtrnId}
+            </if>
+            <if test="infoSqn != null and !infoSqn.equals('')">
+                AND INFO_SQN = #{infoSqn}
+            </if>
+    </select>
+
+    <!--    상품 제품 정보 영상 리스트 조회-->
+    <select id="selectProductVideoList" parameterType="string" resultType="ProductVideoVO">
+        SELECT
+            TBMPVR.PDF_INFO_ID
+            , TBMPVR.INFO_SQN
+            , TBMPVR.PICT_TTL
+            , TBMPVR.PICT_URL
+            , TBMPVR.USE_YN
+            , TBMPVR.DEL_YN
+            , TBMPVR.RGSN_USER_ID
+            , TBMPVR.RGSN_TS
+            , TBMPVR.AMNN_USER_ID
+            , TBMPVR.AMNN_TS
+            , TBMPVR.FILE_ID
+            , TBMPVR.FILE_ID AS IMG_FILE_ID
+            , TBMFAM.FILE_NM
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_PDF_VID_R TBMPVR
+
+        LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_FILE_ATCH_M TBMFAM ON TBMFAM.FILE_ID = TBMPVR.FILE_ID
+
+        WHERE 1 = 1
+            AND TBMPVR.PDF_INFO_ID = #{pdfInfoId}
+    </select>
+
+    <!--    상품 제품 정보 링크 리스트 조회-->
+    <select id="selectProductLinkList" parameterType="string" resultType="ProductLinkVO">
+        SELECT
+        TBMPVR.PDF_INFO_ID
+        , TBMPVR.INFO_SQN
+        , TBMPVR.LINK_TTL
+        , TBMPVR.LINK_URL
+        , TBMPVR.USE_YN
+        , TBMPVR.DEL_YN
+        , TBMPVR.RGSN_USER_ID
+        , TBMPVR.RGSN_TS
+        , TBMPVR.AMNN_USER_ID
+        , TBMPVR.AMNN_TS
+        FROM
+        <include refid="MARKET"/>TB_BOX_MKT_PDF_LINK_R TBMPVR
+        WHERE 1 = 1
+        AND TBMPVR.PDF_INFO_ID = #{pdfInfoId}
+    </select>
+
+    <!--    상품 키워드 리스트 조회   -->
+    <select id="selectProductKeyWordList" parameterType="string" resultType="ProductKeywordVO">
+        SELECT
+            PDF_INFO_ID
+            , INFO_SQN
+            , KWR
+            , RGSN_USER_ID
+            , RGSN_TS
+            , AMNN_USER_ID
+            , AMNN_TS
+
+        FROM <include refid="MARKET"/>TB_BOX_MKT_PDF_KWR_R
+
+        WHERE 1 = 1
+            AND PDF_INFO_ID = #{pdfInfoId}
+    </select>
+
+    <!--    상품 반품/교환 정보 조회  -->
+    <select id="selectProductReturn" parameterType="string" resultType="ProductReturnVO">
+        SELECT
+            PDF_INFO_ID
+            , RTGD_INRC_TRM
+            , RTGD_EXP
+            , RTGD_INRC_PRCD
+            , RTGD_INRC_DSLN
+            , RGSN_USER_ID
+            , RGSN_TS
+            , AMNN_USER_ID
+            , AMNN_TS
+
+        FROM <include refid="MARKET"/>TB_BOX_MKT_PDF_RTIN_L
+
+        WHERE 1 = 1
+            AND PDF_INFO_ID = #{pdfInfoId}
+    </select>
+
+    <!--    상품 키워드 등록   -->
+    <insert id="insertProductKeyWord" parameterType="ProductKeywordVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_PDF_KWR_R
+        (
+            PDF_INFO_ID
+            , INFO_SQN
+            , KWR
+            , RGSN_USER_ID
+            , RGSN_TS
+            , AMNN_USER_ID
+            , AMNN_TS
+        )
+        VALUES
+        (
+            #{pdfInfoId}
+            , (
+                SELECT CASE WHEN MAX(INFO_SQN) IS NULL THEN 1 ELSE MAX(INFO_SQN) + 1 END
+                FROM <include refid="MARKET"/>TB_BOX_MKT_PDF_KWR_R
+                WHERE PDF_INFO_ID = #{pdfInfoId}
+              )
+            , #{kwr}
+            , #{rgsnUserId}
+            , CURRENT_TIMESTAMP
+            , #{amnnUserId}
+            , CURRENT_TIMESTAMP
+        )
+    </insert>
+
+    <!--    상품 키워드 삭제   -->
+    <delete id="deleteProductKeyWord" parameterType="string">
+        DELETE FROM <include refid="MARKET"/>TB_BOX_MKT_PDF_KWR_R
+        WHERE PDF_INFO_ID = #{pdfInfoId}
+    </delete>
+
+    <!--    상품 판매 정보 조회 -->
+    <select id="selectProductSale" parameterType="string" resultType="ProductSaleVO">
+        SELECT
+            PDF_INFO_ID
+             , PDF_PRC
+             , COM_PRCUT_ID
+             , COM_PDFUT_ID
+             , SALE_PRC
+             , PRC_DSCS_YN
+             , ESTT_USE_EN
+             , ORDN_QTY_LMTN_USYN
+             , ORDN_MNMM_QTY
+             , ORDN_MXMM_QTY_YN
+             , ORDN_MXMM_QTY
+             , RGSN_USER_ID
+             , RGSN_TS
+             , AMNN_USER_ID
+             , AMNN_TS
+
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_PDF_SAL_L
+
+        WHERE 1 = 1
+            AND PDF_INFO_ID = #{pdfInfoId}
+    </select>
+
+    <!--    상품 판매 정보 등록-->
+    <insert id="insertProductSale" parameterType="ProductSaleVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_PDF_SAL_L
+        (
+            PDF_INFO_ID
+            , PDF_PRC
+            , COM_PRCUT_ID
+            , COM_PDFUT_ID
+            , SALE_PRC
+            , PRC_DSCS_YN
+            , ESTT_USE_EN
+            , ORDN_QTY_LMTN_USYN
+            , ORDN_MNMM_QTY
+            , ORDN_MXMM_QTY_YN
+            , ORDN_MXMM_QTY
+            , RGSN_USER_ID
+            , RGSN_TS
+            , AMNN_USER_ID
+            , AMNN_TS
+        )
+        VALUES
+        (
+            #{pdfInfoId}
+            , #{pdfPrc}
+            , #{comPrcutId}
+            , #{comPdfutId}
+            , #{salePrc}
+            , #{prcDscsYn}
+            , #{esttUseEn}
+            , #{ordnQtyLmtnUsyn}
+            , #{ordnMnmmQty}
+            , #{ordnMxmmQtyYn}
+            , #{ordnMxmmQty}
+            , #{rgsnUserId}
+            , CURRENT_TIMESTAMP
+            , #{amnnUserId}
+            , CURRENT_TIMESTAMP
+        )
+    </insert>
+
+    <!--    상품 판매 정보 등록 -->
+    <update id="updateProductSale" parameterType="ProductSaleVO">
+        UPDATE
+            <include refid="MARKET"/>TB_BOX_MKT_PDF_SAL_L
+        SET
+            PDF_PRC                  = #{pdfPrc}
+            , COM_PRCUT_ID           = #{comPrcutId}
+            , COM_PDFUT_ID           = #{comPdfutId}
+            , SALE_PRC               = #{salePrc}
+            , PRC_DSCS_YN            = #{prcDscsYn}
+            , ESTT_USE_EN            = #{esttUseEn}
+            , ORDN_QTY_LMTN_USYN     = #{ordnQtyLmtnUsyn}
+            , ORDN_MNMM_QTY          = #{ordnMnmmQty}
+            , ORDN_MXMM_QTY_YN       = #{ordnMxmmQtyYn}
+            , ORDN_MXMM_QTY          = #{ordnMxmmQty}
+            , AMNN_USER_ID           = #{amnnUserId}
+            , AMNN_TS                = CURRENT_TIMESTAMP
+        WHERE
+            PDF_INFO_ID              = #{pdfInfoId}
+    </update>
+
+    <!--    상품 이미지 파일 정보 등록 -->
+    <insert id="insertProductFile" parameterType="ProductFileVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_PDF_FIE_R
+        (
+            PDF_INFO_ID
+            , FILE_ID
+            , INFO_SQN
+            , FILE_PTRN_ID
+            , RGSN_USER_ID
+            , RGSN_TS
+            , AMNN_USER_ID
+            , AMNN_TS
+        )
+        VALUES
+        (
+            #{pdfInfoId}
+            , #{fileId}
+            , (
+                SELECT CASE WHEN MAX(INFO_SQN) IS NULL THEN 1 ELSE MAX(INFO_SQN) + 1 END
+                FROM <include refid="MARKET"/>TB_BOX_MKT_PDF_FIE_R
+                WHERE PDF_INFO_ID = #{pdfInfoId}
+            )
+            , #{filePtrnId}
+            , #{rgsnUserId}
+            , CURRENT_TIMESTAMP
+            , #{amnnUserId}
+            , CURRENT_TIMESTAMP
+        )
+    </insert>
+
+    <!--    상품 이미지 파일 정보 삭제 -->
+    <delete id="deleteProductFile" parameterType="string">
+        DELETE <include refid="MARKET"/>TB_BOX_MKT_PDF_FIE_R
+        WHERE PDF_INFO_ID = #{pdfInfoId}
+    </delete>
+
+    <!--    상품 제품 영상 정보 등록  -->
+    <insert id="insertProductVideo" parameterType="ProductVideoVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_PDF_VID_R
+        (
+            PDF_INFO_ID
+            , INFO_SQN
+            , FILE_ID
+            , PICT_TTL
+            , PICT_URL
+            , USE_YN
+            , DEL_YN
+            , RGSN_USER_ID
+            , RGSN_TS
+            , AMNN_USER_ID
+            , AMNN_TS
+        )
+        VALUES
+        (
+            #{pdfInfoId}
+            , (
+                SELECT CASE WHEN MAX(INFO_SQN) IS NULL THEN 1 ELSE MAX(INFO_SQN) + 1 END
+                FROM <include refid="MARKET"/>TB_BOX_MKT_PDF_VID_R
+                WHERE PDF_INFO_ID = #{pdfInfoId}
+            )
+            , #{fileId}
+            , #{pictTtl}
+            , #{pictUrl}
+            , 'Y'
+            , 'N'
+            , #{rgsnUserId}
+            , CURRENT_TIMESTAMP
+            , #{amnnUserId}
+            , CURRENT_TIMESTAMP
+        )
+    </insert>
+
+    <!--    상품 제품 링크 정보 등록  -->
+    <insert id="insertProductLink" parameterType="ProductLinkVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_PDF_LINK_R
+        (
+        PDF_INFO_ID
+        , INFO_SQN
+        , LINK_TTL
+        , LINK_URL
+        , USE_YN
+        , DEL_YN
+        , RGSN_USER_ID
+        , RGSN_TS
+        , AMNN_USER_ID
+        , AMNN_TS
+        )
+        VALUES
+        (
+        #{pdfInfoId}
+        , (
+        SELECT CASE WHEN MAX(INFO_SQN) IS NULL THEN 1 ELSE MAX(INFO_SQN) + 1 END
+        FROM <include refid="MARKET"/>TB_BOX_MKT_PDF_LINK_R
+        WHERE PDF_INFO_ID = #{pdfInfoId}
+        )
+        , #{linkTtl}
+        , #{linkUrl}
+        , 'Y'
+        , 'N'
+        , #{rgsnUserId}
+        , CURRENT_TIMESTAMP
+        , #{amnnUserId}
+        , CURRENT_TIMESTAMP
+        )
+    </insert>
+
+    <!--    상품 제품 영상 정보 삭제  -->
+    <delete id="deleteProductVideo" parameterType="string">
+        DELETE FROM <include refid="MARKET"/>TB_BOX_MKT_PDF_VID_R
+        WHERE PDF_INFO_ID = #{pdfInfoId}
+    </delete>
+
+    <!--    상품 제품 링크 정보 삭제  -->
+    <delete id="deleteProductLink" parameterType="string">
+        DELETE FROM <include refid="MARKET"/>TB_BOX_MKT_PDF_LINK_R
+        WHERE PDF_INFO_ID = #{pdfInfoId}
+    </delete>
+
+    <!--    상품 반품/교환 정보 등록-->
+    <insert id="insertProductReturn" parameterType="ProductReturnVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_PDF_RTIN_L
+        (
+            PDF_INFO_ID
+            , RTGD_INRC_TRM
+            , RTGD_EXP
+            , RTGD_INRC_PRCD
+            , RTGD_INRC_DSLN
+            , RGSN_USER_ID
+            , RGSN_TS
+            , AMNN_USER_ID
+            , AMNN_TS
+        )
+        VALUES
+        (
+            #{pdfInfoId}
+            , #{rtgdInrcTrm}
+            , #{rtgdExp}
+            , #{rtgdInrcPrcd}
+            , #{rtgdInrcDsln}
+            , #{rgsnUserId}
+            , CURRENT_TIMESTAMP
+            , #{amnnUserId}
+            , CURRENT_TIMESTAMP
+        )
+    </insert>
+
+    <!--    상품 반품/교환 정보 수정  -->
+    <update id="updateProductReturn" parameterType="ProductReturnVO">
+        UPDATE
+            <include refid="MARKET"/>TB_BOX_MKT_PDF_RTIN_L
+        SET
+            RTGD_INRC_TRM       = #{rtgdInrcTrm}
+            , RTGD_EXP            = #{rtgdExp}
+            , RTGD_INRC_PRCD      = #{rtgdInrcPrcd}
+            , RTGD_INRC_DSLN      = #{rtgdInrcDsln}
+            , AMNN_USER_ID        = #{amnnUserId}
+            , AMNN_TS             = CURRENT_TIMESTAMP
+        WHERE
+            PDF_INFO_ID           = #{pdfInfoId}
+    </update>
+
+    <!--    상품 조회 이력 등록 -->
+    <insert id="insertProductSearchHistory" parameterType="ProductSearchHistoryVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_PDF_INQ_H
+        (
+            PDF_INFO_ID
+            , MDPH_SQN
+            , INQ_USIS_ID
+            , INQ_USER_ID
+            , INQ_TS
+            , PRHS_PTRN_ID
+            , RGSN_USER_ID
+            , RGSN_TS
+        ) SELECT
+            #{pdfInfoId}
+            ,(NVL(MAX(MDPH_SQN),0) + 1)
+            , #{inqUsisId}
+            , #{inqUserId}
+            , CURRENT_TIMESTAMP
+            , #{prhsPtrnId}
+            , #{rgsnUserId}
+            , CURRENT_TIMESTAMP
+        FROM <include refid="MARKET"/>TB_BOX_MKT_PDF_INQ_H WHERE PDF_INFO_ID = #{pdfInfoId}
+    </insert>
+
+</mapper>

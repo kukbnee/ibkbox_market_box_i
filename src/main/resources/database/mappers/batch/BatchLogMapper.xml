@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ibk.sb.restapi.biz.service.log.repo.BatchLogRepo">
+
+    <select id="selectBatchLog" parameterType="int" resultType="BatchLogVO">
+        SELECT
+            batch_log_seq
+            , batch_exec_scheduler
+            , batch_exec_method
+            , batch_status
+            , batch_result_desc
+            , create_date_time
+            , modify_date_time
+        FROM tbl_batch_log
+        WHERE
+            batch_log_seq = #{batchLogSeq}
+    </select>
+
+    <select id="selectBatchLogList" parameterType="string" resultType="BatchLogVO">
+        SELECT
+            batch_log_seq
+            , batch_exec_scheduler
+            , batch_exec_method
+            , batch_status
+            , batch_result_desc
+            , create_date_time
+            , modify_date_time
+        FROM tbl_batch_log
+        WHERE 1 = 1
+            <if test="batchStatus != null and !batchStatus.equals('')">
+                AND batch_status = #{batchStatus}
+            </if>
+    </select>
+
+    <insert id="insertBatchLog" parameterType="BatchLogVO">
+        INSERT INTO tbl_batch_log
+            (
+                  batch_log_seq
+                , batch_exec_scheduler
+                , batch_exec_method
+                , batch_status
+                , batch_result_desc
+                , create_date_time
+                , modify_date_time
+            )
+        VALUES
+            (
+                #{batchLogSeq}
+                , #{batchExecScheduler}
+                , #{batchExecMethod}
+                , #{batchStatus}
+                , #{batchResultDesc}
+                , NOW()
+                , NOW()
+            )
+    </insert>
+
+    <update id="updateBatchLog" parameterType="BatchLogVO">
+        UPDATE tbl_batch_log
+        SET
+            batch_result_desc = #{batchResultDesc}
+            , modify_date_time = NOW()
+        WHERE
+            batch_log_seq = #{batchLogSeq}
+    </update>
+
+</mapper>

@@ -1,0 +1,403 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ibk.sb.restapi.biz.service.estimation.repo.EstimationRepo">
+
+
+    <sql id="MARKET"><include refid="com.ibk.sb.restapi.biz.service.common.repo.SchemaRepo.MARKET"/></sql>
+
+    <!-- PagingMapper ID -->
+    <sql id="pagingHeader"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageHeader"/></sql>
+    <sql id="pagingFooter"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageFooter"/></sql>
+
+    <insert id="insertEstimationInfo" parameterType="RequestSearchEstimationVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_ESM_INF_M
+        (
+            ESTT_INFO_ID
+            , DPMP_USIS_ID
+            , DPMP_USER_ID
+            , RCVR_USIS_ID
+            , RCVR_USER_ID
+            , ORDN_INFO_ID
+            , PCSNSTTS_ID
+            , RGSL_IMG_FILE_ID
+            , RGSN_USER_ID
+            , RGSN_TS
+            , AMNN_USER_ID
+            , AMNN_TS
+        )
+        VALUES
+        (
+            #{esttInfoId}
+            , #{dpmpUsisId}
+            , #{dpmpUserId}
+            , #{rcvrUsisId}
+            , #{rcvrUserId}
+            , #{ordnInfoId}
+            , #{pcsnSttsId}
+            , #{rgslImgFileId}
+            , #{rgsnUserId}
+            , CURRENT_TIMESTAMP
+            , #{amnnUserId}
+            , ''
+        )
+    </insert>
+
+    <insert id="insertEstimationInfoHistory" parameterType="RequestSearchEstimationVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_ESM_INF_H
+        (
+            ESTT_INFO_ID
+            , MDPH_SQN
+            , PCSNSTTS_ID
+            , PCSN_CON
+            , RGSN_USER_ID
+            , RGSN_TS
+            , AMNN_USER_ID
+            , AMNN_TS
+        ) SELECT
+            #{esttInfoId}
+            ,(NVL(MAX(MDPH_SQN),0) + 1)
+            , #{pcsnSttsId}
+            , #{pcsnCon}
+            , #{rgsnUserId}
+            , CURRENT_TIMESTAMP
+            , #{amnnUserId}
+            , ''
+        FROM <include refid="MARKET"/>TB_BOX_MKT_ESM_INF_H WHERE ESTT_INFO_ID = #{esttInfoId}
+    </insert>
+
+    <insert id="insertEstimationDelivery" parameterType="RequestSearchEstimationVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_ESM_DVRY_M
+        (
+            ESTT_INFO_ID
+            , SELR_USIS_ID
+            , DVRY_PTRN_ID
+            , ENTP_INFO_ID
+            , DVRYNONE
+            , RGSN_USER_ID
+            , RGSN_TS
+            , AMNN_USER_ID
+            , AMNN_TS
+        )
+        VALUES
+        (
+            #{esttInfoId}
+            , #{selrUsisId}
+            , #{dvryPtrnId}
+            , #{entpInfoId}
+            , #{dvrynone}
+            , #{rgsnUserId}
+            , CURRENT_TIMESTAMP
+            , #{amnnUserId}
+            , ''
+        )
+    </insert>
+
+    <insert id="insertEstimationRlon" parameterType="RequestSearchEstimationVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_ESM_RLON_R
+        (
+            ESTT_INFO_ID
+            , RLONTF_ZPCD
+            , RLONTF_ADR
+            , RLONTF_DTAD
+            , RGSN_USER_ID
+            , RGSN_TS
+            , AMNN_USER_ID
+            , AMNN_TS
+        )
+        VALUES
+        (
+            #{esttInfoId}
+            , #{rlontfZpcd}
+            , #{rlontfAdr}
+            , #{rlontfDtad}
+            , #{rgsnUserId}
+            , CURRENT_TIMESTAMP
+            , #{amnnUserId}
+            , ''
+        )
+    </insert>
+
+    <insert id="insertEstimationRcar" parameterType="RequestSearchEstimationVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_ESM_RCAR_R
+        (
+            ESTT_INFO_ID
+            , RCAR_NM
+            , RCAR_CNPLONE
+            , RCAR_ZPCD
+            , RCAR_ADR
+            , RCAR_DTL_ADR
+            , RGSN_USER_ID
+            , RGSN_TS
+            , AMNN_USER_ID
+            , AMNN_TS
+        )
+        VALUES
+        (
+            #{esttInfoId}
+            , #{rcarNm}
+            , #{rcarCnplone}
+            , #{rcarZpcd}
+            , #{rcarAdr}
+            , #{rcarDtlAdr}
+            , #{rgsnUserId}
+            , CURRENT_TIMESTAMP
+            , #{amnnUserId}
+            , ''
+        )
+    </insert>
+
+    <insert id="insertEstimationInes" parameterType="RequestSearchEstimationVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_INES_R
+        (
+            ESTT_INFO_ID
+            , INQR_INFO_ID
+            , INFO_SQN
+            , INES_SQN
+            , PCSNSTTS_ID
+            , RGSN_TS
+        )
+        VALUES
+        (
+            #{esttInfoId}
+            , #{inqrInfoId}
+            , (SELECT CASE WHEN MAX(INFO_SQN) IS NULL THEN 0 ELSE MAX(INFO_SQN) END FROM <include refid="MARKET"/>TB_BOX_MKT_INQU_R WHERE INQR_INFO_ID = #{inqrInfoId})
+            , 0
+            , #{pcsnSttsId}
+            , CURRENT_TIMESTAMP
+        )
+    </insert>
+
+    <insert id="insertEstimationInesForCancel" parameterType="RequestSearchEstimationVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_INES_R
+        (
+            ESTT_INFO_ID
+            , INQR_INFO_ID
+            , INFO_SQN
+            , INES_SQN
+            , PCSNSTTS_ID
+            , RGSN_TS
+        )
+        VALUES
+        (
+            #{esttInfoId}
+            , #{inqrInfoId}
+            , (SELECT CASE WHEN MAX(INFO_SQN) IS NULL THEN 0 ELSE MAX(INFO_SQN) END FROM <include refid="MARKET"/>TB_BOX_MKT_INQU_R WHERE INQR_INFO_ID = #{inqrInfoId})
+            , 0
+            , #{pcsnSttsId}
+            , CURRENT_TIMESTAMP
+        )
+    </insert>
+
+    <update id="updateEstimationInfo" parameterType="RequestSearchEstimationVO">
+        UPDATE
+            <include refid="MARKET"/>TB_BOX_MKT_ESM_INF_M TBMEIM
+        SET
+            TBMEIM.PCSNSTTS_ID = #{pcsnSttsId}
+            , TBMEIM.AMNN_USER_ID = #{amnnUserId}
+            , TBMEIM.AMNN_TS = CURRENT_TIMESTAMP
+        WHERE 1=1
+            AND TBMEIM.ESTT_INFO_ID = #{esttInfoId}
+    </update>
+
+    <update id="updateEstimationInquR" parameterType="RequestSearchEstimationVO">
+        UPDATE <include refid="MARKET"/>TB_BOX_MKT_INQU_R
+        SET CON = #{inqrCon}
+            , AMNN_USER_ID = #{amnnUserId}
+            , AMNN_TS = CURRENT_TIMESTAMP
+        WHERE 1=1
+          AND INQR_INFO_ID = #{inqrInfoId}
+          AND INFO_SQN = #{inqrInfoSqn}
+    </update>
+
+    <update id="updateEstimationInes" parameterType="RequestSearchEstimationVO">
+        UPDATE
+            <include refid="MARKET"/>TB_BOX_MKT_INES_R
+        SET
+        PCSNSTTS_ID = #{pcsnSttsId}
+        WHERE 1=1
+            AND ESTT_INFO_ID = #{esttInfoId}
+            AND INQR_INFO_ID = #{inqrInfoId}
+            AND INFO_SQN = #{inqrInfoSqn}
+            AND INES_SQN = #{inesSqn}
+    </update>
+
+    <select id="searchEstimationInfoList" parameterType="RequestSearchEstimationVO" resultType="SummaryEstimationInfoVO">
+        <include refid="pagingHeader"/>
+        SELECT
+            TBMEIM.ESTT_INFO_ID
+             , TBMEIM.DPMP_USIS_ID
+             , TBMEIM.DPMP_USER_ID
+             , TBMEIM.RCVR_USIS_ID
+             , TBMEIM.RCVR_USER_ID
+             , TBMEIM.PCSNSTTS_ID
+             , (SELECT COM_CD_NM FROM <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D WHERE COM_CD_ID = TBMEIM.PCSNSTTS_ID) AS PCSN_STTS_NM
+             , TO_CHAR(TBMEIM.RGSN_TS, 'YYYY-MM-DD HH24:MI:SS') AS RGSN_TS_STR
+             , TBMEPR.INFO_SQN AS ESM_PDF_INFO_SQN
+             , TBMEPR.PDF_NM
+             , TBMEPR.PDF_PRC
+             , TBMEPR.PDF_PRC * TBMEPR.ORDN_QTY AS SUM_AMT
+             , (SELECT COUNT(1) FROM <include refid="MARKET"/>TB_BOX_MKT_ESM_PDF_R WHERE ESTT_INFO_ID = TBMEIM.ESTT_INFO_ID) AS PDF_CNT
+             , (SELECT SUM(PDF_PRC * ORDN_QTY) FROM <include refid="MARKET"/>TB_BOX_MKT_ESM_PDF_R WHERE ESTT_INFO_ID = TBMEIM.ESTT_INFO_ID) AS PDF_SUM
+             , TBMIR.INQR_INFO_ID
+             , TBMIR.INFO_SQN AS INQR_INFO_SQN
+             , TBMIR.INES_SQN
+             , TBMPFR.FILE_ID AS IMG_FILE_ID
+             , TBMEPR.GEAR_PDF_INFO_ID
+             , '{'||TBMCC.TMS1_CLSF_NM||'},{'||TBMCC.TMS2_CLSF_NM||'},{'||TBMCC.TMS3_CLSF_NM||'},{'||TBMCC.TMS4_CLSF_NM||'},{'||TBMCC.TMS5_CLSF_NM||'}' AS CTGY_DATA
+             , TBMCC.TMS4_CLSF_NM
+             , TBMFIM.BPLC_NM
+             , TBMFIM.RPRSNTV_NM
+             , TBMFIM2.BPLC_NM AS RCVR_BPLC_NM
+             , (SELECT COM_CD_NM FROM <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D WHERE COM_CD_ID = TBMPSL.COM_PRCUT_ID) AS COM_PRCUT_NM
+             , TBMPIM.AGEN_INF_ID
+             , CASE WHEN TBMPIM.AGEN_INF_ID IS NULL THEN 'N' ELSE 'Y' END AS AGEN_STATE
+             , TBMPIM.PDF_STTS_ID
+             , TBMPIM.PDF_PGRS_YN
+             , TBMPSL.PRC_DSCS_YN
+             , TBMOPR.ORDN_INFO_ID
+             , TBMOPR.INFO_SQN AS ORDN_PDF_INFO_SQN
+             , TBMOPR.ORDN_STTS_ID
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_ESM_INF_M TBMEIM
+            INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_ESM_PDF_R TBMEPR ON TBMEPR.ESTT_INFO_ID = TBMEIM.ESTT_INFO_ID
+                AND TBMEPR.INFO_SQN = (SELECT MIN(INFO_SQN) FROM <include refid="MARKET"/>TB_BOX_MKT_ESM_PDF_R WHERE ESTT_INFO_ID = TBMEIM.ESTT_INFO_ID)
+            INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_INES_R TBMIR ON TBMIR.ESTT_INFO_ID = TBMEIM.ESTT_INFO_ID
+                AND TBMIR.INFO_SQN = (SELECT MAX(INFO_SQN) FROM <include refid="MARKET"/>TB_BOX_MKT_INES_R WHERE ESTT_INFO_ID = TBMEIM.ESTT_INFO_ID)
+            INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_FFPC_INF_M TBMFIM ON TBMFIM.UTLINSTT_ID = TBMEIM.DPMP_USIS_ID
+            INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_FFPC_INF_M TBMFIM2 ON TBMFIM2.UTLINSTT_ID = TBMEIM.RCVR_USIS_ID
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_INF_M TBMPIM ON TBMPIM.PDF_INFO_ID = TBMEPR.GEAR_PDF_INFO_ID
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_SAL_L TBMPSL ON TBMPSL.PDF_INFO_ID = TBMPIM.PDF_INFO_ID
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_CTGY_C TBMCC ON TBMCC.CTGY_ID = TBMPIM.PDF_CTGY_ID
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_FIE_R TBMPFR ON TBMPFR.PDF_INFO_ID = TBMEPR.GEAR_PDF_INFO_ID
+                AND TBMPFR.FILE_PTRN_ID = #{filePtrnId}
+                AND TBMPFR.INFO_SQN = (SELECT MIN(INFO_SQN) FROM <include refid="MARKET"/>TB_BOX_MKT_PDF_FIE_R WHERE FILE_PTRN_ID = #{filePtrnId} AND PDF_INFO_ID = TBMEPR.GEAR_PDF_INFO_ID)
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDF_R TBMOPR ON TBMOPR.ORDN_INFO_ID = TBMEIM.ORDN_INFO_ID
+                AND TBMOPR.INFO_SQN = (SELECT MIN(INFO_SQN) FROM <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDF_R WHERE ORDN_INFO_ID = TBMOPR.ORDN_INFO_ID)
+        WHERE 1=1
+            <if test="estimationSearchType != null and estimationSearchType.equals('sen')">
+                AND TBMEIM.DPMP_USIS_ID = #{dpmpUsisId}
+            </if>
+            <if test="estimationSearchType != null and estimationSearchType.equals('rec')">
+                AND TBMEIM.RCVR_USIS_ID = #{rcvrUsisId}
+            </if>
+            <if test="pcsnSttsId != null and !pcsnSttsId.equals('')">
+                AND TBMEIM.PCSNSTTS_ID = #{pcsnSttsId}
+            </if>
+        ORDER BY
+            TBMEIM.RGSN_TS DESC, TBMEIM.ESTT_INFO_ID, TBMEPR.INFO_SQN
+        <include refid="pagingFooter"/>
+    </select>
+
+    <select id="searchEstimationInfo" parameterType="RequestSearchEstimationVO" resultType="SummaryEstimationInfoVO">
+        SELECT
+            TBMEIM.ESTT_INFO_ID
+             , TBMEIM.PCSNSTTS_ID
+             , (SELECT COM_CD_NM FROM <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D WHERE COM_CD_ID = TBMEIM.PCSNSTTS_ID) AS PCSN_STTS_NM
+             , TBMEIM.DPMP_USIS_ID
+             , TBMEIM.DPMP_USER_ID
+             , TBMEIM.RCVR_USIS_ID
+             , TBMEIM.RCVR_USER_ID
+             , TBMEIM.RGSL_IMG_FILE_ID
+             , TBMEDM.DVRY_PTRN_ID
+             , (SELECT COM_CD_NM FROM <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D WHERE COM_CD_ID = TBMEDM.DVRY_PTRN_ID) AS DVRY_PTRN_NM
+             , TBMEDM.DVRYNONE
+             , TBMERR.RCAR_NM
+             , TBMERR.RCAR_CNPLONE
+             , TBMERR.RCAR_ZPCD
+             , TBMERR.RCAR_ADR
+             , TBMERR.RCAR_DTL_ADR
+             , (SELECT SUM(ORDN_QTY) FROM <include refid="MARKET"/>TB_BOX_MKT_ESM_PDF_R WHERE ESTT_INFO_ID = TBMEIM.ESTT_INFO_ID) AS PDF_CNT
+             , (SELECT SUM(PDF_PRC * ORDN_QTY) FROM <include refid="MARKET"/>TB_BOX_MKT_ESM_PDF_R WHERE ESTT_INFO_ID = TBMEIM.ESTT_INFO_ID) AS PDF_SUM
+             , TBMIR.INQR_INFO_ID
+             , TBMIR.INFO_SQN AS INQR_INFO_SQN
+             , TBMIR.INES_SQN
+             , TBMFIM.BPLC_NM
+             , TBMFIM.RPRSNTV_NM
+             , TBMFIM2.BPLC_NM AS RCVR_BPLC_NM
+             , TBMDIM.ENTP_NM
+        FROM
+        <include refid="MARKET"/>TB_BOX_MKT_ESM_INF_M TBMEIM
+            INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_ESM_DVRY_M TBMEDM ON TBMEDM.ESTT_INFO_ID = TBMEIM.ESTT_INFO_ID
+            INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_ESM_RCAR_R TBMERR ON TBMERR.ESTT_INFO_ID = TBMEIM.ESTT_INFO_ID
+            INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_INES_R TBMIR ON TBMIR.ESTT_INFO_ID = TBMEIM.ESTT_INFO_ID
+                AND TBMIR.INFO_SQN = (SELECT MAX(INFO_SQN)
+                                        FROM <include refid="MARKET"/>TB_BOX_MKT_INES_R
+                                        WHERE ESTT_INFO_ID = #{esttInfoId}
+                                        )
+            INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_FFPC_INF_M TBMFIM ON TBMFIM.UTLINSTT_ID = TBMEIM.DPMP_USIS_ID
+            INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_FFPC_INF_M TBMFIM2 ON TBMFIM2.UTLINSTT_ID = TBMEIM.RCVR_USIS_ID
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_DVRY_INF_M TBMDIM ON TBMDIM.ENTP_INFO_ID = TBMEDM.ENTP_INFO_ID
+        WHERE 1=1
+            AND TBMEIM.ESTT_INFO_ID = #{esttInfoId}
+    </select>
+
+    <select id="searchEstimationForCancel" parameterType="RequestSearchEstimationVO" resultType="SummaryEstimationInfoVO">
+        SELECT
+            PCSNSTTS_ID
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_ESM_INF_M
+        WHERE 1=1
+            AND ESTT_INFO_ID = #{esttInfoId}
+    </select>
+
+    <select id="searchEstimationSumCnt" parameterType="RequestSearchEstimationVO" resultType="EstimationCntVO">
+        SELECT
+            (SELECT COUNT(1)
+             FROM <include refid="MARKET"/>TB_BOX_MKT_ESM_INF_M
+             WHERE 1=1
+                AND DPMP_USIS_ID = #{dpmpUsisId}
+                <if test="pcsnSttsId != null and !pcsnSttsId.equals('')">
+                    AND PCSNSTTS_ID = #{pcsnSttsId}
+                </if>
+            ) AS DPMP_SUM_CNT
+             , (SELECT COUNT(1)
+                FROM <include refid="MARKET"/>TB_BOX_MKT_ESM_INF_M
+                WHERE 1=1
+                    AND RCVR_USIS_ID = #{rcvrUsisId}
+                    <if test="pcsnSttsId != null and !pcsnSttsId.equals('')">
+                        AND PCSNSTTS_ID = #{pcsnSttsId}
+                    </if>
+                ) AS RCVR_SUM_CNT
+        FROM DUAL
+    </select>
+
+    <select id="searchEstimationInqrRcvrUsisId" parameterType="RequestSearchEstimationVO" resultType="EstimationVO">
+        SELECT
+        DPMP_USIS_ID AS RCVR_USIS_ID
+        , INQR_INFO_ID
+        , INFO_SQN AS INQR_INFO_SQN
+        FROM <include refid="MARKET"/>TB_BOX_MKT_INQU_R TBMIR
+        WHERE 1=1
+        AND INQR_INFO_ID = #{inqrInfoId}
+        AND RCVR_USIS_ID = #{dpmpUsisId}
+        AND INFO_SQN = (SELECT MAX(INFO_SQN) FROM <include refid="MARKET"/>TB_BOX_MKT_INQU_R WHERE INQR_INFO_ID = TBMIR.INQR_INFO_ID AND DPMP_USIS_ID = TBMIR.DPMP_USIS_ID)
+    </select>
+
+    <select id="searchEstimationInqrDpmpUsisId" parameterType="RequestSearchEstimationVO" resultType="EstimationVO">
+        SELECT
+            DPMP_USIS_ID AS RCVR_USIS_ID
+             , INQR_INFO_ID
+             , INFO_SQN AS INQR_INFO_SQN
+        FROM <include refid="MARKET"/>TB_BOX_MKT_INQU_R TBMIR
+        WHERE 1=1
+          AND INQR_INFO_ID = #{inqrInfoId}
+          AND DPMP_USIS_ID = #{dpmpUsisId}
+          AND INFO_SQN = (SELECT MAX(INFO_SQN) FROM <include refid="MARKET"/>TB_BOX_MKT_INQU_R WHERE INQR_INFO_ID = TBMIR.INQR_INFO_ID AND DPMP_USIS_ID = TBMIR.DPMP_USIS_ID)
+    </select>
+
+    <select id="searchEstimationInqrInfoId" parameterType="RequestSearchEstimationVO" resultType="EstimationVO">
+        SELECT
+            TBMIER.ESTT_INFO_ID
+             , TBMIER.INQR_INFO_ID
+             , TBMIER.INFO_SQN AS INQR_INFO_SQN
+             , TBMIER.INES_SQN
+             , TBMIQR.DPMP_USIS_ID
+             , TBMIQR.RCVR_USIS_ID
+        FROM <include refid="MARKET"/>TB_BOX_MKT_INES_R TBMIER
+            INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_INQU_R TBMIQR ON TBMIQR.INQR_INFO_ID = TBMIER.INQR_INFO_ID AND TBMIQR.INFO_SQN = TBMIER.INFO_SQN
+        WHERE 1=1
+          AND ESTT_INFO_ID = #{esttInfoId}
+          AND TBMIER.INES_SQN = (SELECT MIN(INES_SQN) FROM <include refid="MARKET"/>TB_BOX_MKT_INES_R WHERE ESTT_INFO_ID = TBMIER.ESTT_INFO_ID AND INQR_INFO_ID = TBMIER.INQR_INFO_ID AND INFO_SQN = TBMIER.INFO_SQN)
+    </select>
+</mapper>

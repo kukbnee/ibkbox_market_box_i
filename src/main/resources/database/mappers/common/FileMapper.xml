@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ibk.sb.restapi.biz.service.file.repo.FileRepo">
+
+    <sql id="MARKET"><include refid="com.ibk.sb.restapi.biz.service.common.repo.SchemaRepo.MARKET"/></sql>
+
+    <!--    첨부파일 정보 조회  -->
+    <select id="selectFileInfo" parameterType="string" resultType="FileInfoVO">
+        SELECT
+            FILE_ID
+            , FILE_NM
+            , FILE_PATH
+            , FILE_ETNS
+            , FILE_PTRN
+            , FILE_SIZE
+            , DEL_YN
+            , RGSN_USER_ID
+            , RGSN_TS
+
+        FROM
+             <include refid="MARKET"/>TB_BOX_MKT_FILE_ATCH_M
+
+        WHERE 1 = 1
+            AND FILE_ID = #{fileId}
+    </select>
+
+    <!--    첨부파일 정보 등록  -->
+    <insert id="insertFileInfo" parameterType="FileInfoVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_FILE_ATCH_M
+            (
+                FILE_ID
+                , FILE_NM
+                , FILE_PATH
+                , FILE_ETNS
+                , FILE_PTRN
+                , FILE_SIZE
+                , DEL_YN
+                , RGSN_USER_ID
+                , RGSN_TS
+
+            )
+        VALUES
+            (
+                #{fileId}
+                , #{fileNm}
+                , #{filePath}
+                , #{fileEtns}
+                , #{filePtrn}
+                , #{fileSize}
+                , 'N'
+                , #{rgsnUserId}
+                , CURRENT_TIMESTAMP
+            )
+    </insert>
+
+    <!--    첨부파일 정보 삭제  -->
+    <update id="deleteFileInfo" parameterType="string">
+        UPDATE <include refid="MARKET"/>TB_BOX_MKT_FILE_ATCH_M
+        SET
+            DEL_YN = 'Y'
+        WHERE 1 = 1
+            AND FILE_ID = #{fileId}
+    </update>
+
+    <!--    첨부파일 정보 수정  -->
+    <update id="updateFileInfo" parameterType="string">
+        UPDATE <include refid="MARKET"/>TB_BOX_MKT_FILE_ATCH_M
+        SET
+            DEL_YN = 'N'
+        WHERE 1 = 1
+            AND FILE_ID = #{fileId}
+    </update>
+
+</mapper>

@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ibk.sb.restapi.biz.service.banner.repo.BannerRepo">
+
+    <sql id="MARKET"><include refid="com.ibk.sb.restapi.biz.service.common.repo.SchemaRepo.MARKET"/></sql>
+
+    <!--    PagingMapper ID -->
+    <sql id="pagingHeader"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageHeader"/></sql>
+    <sql id="pagingFooter"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageFooter"/></sql>
+
+    <sql id="bannerList">
+        SELECT
+            TBMBIM.BAN_INF_ID
+            , TBMBIM.TTL
+            , TBMBIM.CON
+            , TBMBIM.LINK
+            , TBMBIM.STDY
+            , TBMBIM.FNDA
+            , TBMBIM.FILE_ID
+            , TBMBIM.FILE_ID AS IMG_FILE_ID
+            , TBMFAM.FILE_PATH
+            , TBMBIM.OPPB_YN
+            , CASE WHEN TBMBIM.OPPB_YN = 'N' THEN '비공개'
+                   WHEN CURRENT_DATE BETWEEN TBMBIM.STDY AND TBMBIM.FNDA THEN '공개'
+                   WHEN CURRENT_DATE > TBMBIM.FNDA THEN '종료'
+                   ELSE '대기' END AS STATUS
+        FROM <include refid="MARKET"/>TB_BOX_MKT_BAN_INF_M TBMBIM
+        LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_FILE_ATCH_M TBMFAM ON TBMFAM.FILE_ID = TBMBIM.FILE_ID AND TBMFAM.DEL_YN = 'N'
+    </sql>
+
+    <!--    베너 목록 조회   -->
+    <select id="selectBannerList" resultType="BannerVO">
+        <include refid="bannerList" />
+        WHERE 1 = 1
+        AND TBMBIM.TYPE_ID = #{typeId}
+        AND CURRENT_DATE BETWEEN TBMBIM.STDY AND TBMBIM.FNDA
+        AND TBMBIM.DEL_YN = 'N'
+        AND TBMBIM.OPPB_YN = 'Y'
+    </select>
+
+    <select id="selectBannerPaging" parameterType="RequestBannerSearchVO" resultType="BannerVO">
+        <include refid="pagingHeader"/>
+        <include refid="bannerList" />
+        WHERE 1 = 1
+        AND TBMBIM.TYPE_ID = #{typeId}
+        AND TBMBIM.DEL_YN = 'N'
+        <if test="statusCode != null and statusCode.equals('off')">
+        AND TBMBIM.OPPB_YN = 'N'
+        </if>
+        <if test="statusCode != null and statusCode.equals('display')">
+        AND TBMBIM.OPPB_YN = 'Y' AND CURRENT_DATE BETWEEN TBMBIM.STDY AND TBMBIM.FNDA
+        </if>
+        <if test="statusCode != null and statusCode.equals('close')">
+        AND TBMBIM.OPPB_YN = 'Y' AND CURRENT_DATE > TBMBIM.FNDA
+        </if>
+        <if test="statusCode != null and statusCode.equals('stanby')">
+            AND TBMBIM.OPPB_YN = 'Y' AND TBMBIM.STDY > CURRENT_DATE
+        </if>
+        ORDER BY TBMBIM.RGSN_TS DESC
+        <include refid="pagingFooter"/>
+    </select>
+
+    <select id="selectBannerInfo" resultType="BannerVO">
+        <include refid="bannerList" />
+        WHERE 1 = 1
+        AND TBMBIM.BAN_INF_ID = #{banInfId}
+    </select>
+
+    <select id="selectBannerCurrentStatus" resultType="BannerStatusVO">
+        SELECT
+            NVL(SUM(CASE WHEN TYPE_ID = 'BNS00001' AND OPPB_YN = 'Y' AND (CURRENT_DATE BETWEEN STDY AND FNDA OR STDY > CURRENT_DATE) THEN 1 ELSE 0 END),0) AS MAIN_BAN_CNT,
+            NVL(SUM(CASE WHEN TYPE_ID = 'BNS00002' AND OPPB_YN = 'Y' AND (CURRENT_DATE BETWEEN STDY AND FNDA OR STDY > CURRENT_DATE) THEN 1 ELSE 0 END),0) AS SUB_BAN_CNT,
+            NVL(SUM(CASE WHEN TYPE_ID = 'BNS00003' AND OPPB_YN = 'Y' AND (CURRENT_DATE BETWEEN STDY AND FNDA OR STDY > CURRENT_DATE) THEN 1 ELSE 0 END),0) AS PRDT_BAN_CNT,
+            NVL(SUM(CASE WHEN TYPE_ID = 'BNS00004' AND OPPB_YN = 'Y' AND (CURRENT_DATE BETWEEN STDY AND FNDA OR STDY > CURRENT_DATE) THEN 1 ELSE 0 END),0) AS EVENT_BAN_CNT
+        FROM <include refid="MARKET"/>TB_BOX_MKT_BAN_INF_M
+        WHERE DEL_YN = 'N'
+    </select>
+
+    <insert id="insertBannerInfo">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_BAN_INF_M
+        (
+            BAN_INF_ID
+            , FILE_ID
+            , TYPE_ID
+            , TTL
+            , CON
+            , LINK
+            , STDY
+            , FNDA
+            , OPPB_YN
+            , DEL_YN
+            , RGSN_USER_ID
+            , RGSN_TS
+            , AMNN_USER_ID
+            , AMNN_TS
+        )
+        VALUES
+        (
+            #{params.banInfId}
+            , #{params.fileId}
+            , #{typeId}
+            , #{params.ttl}
+            , #{params.con}
+            , #{params.link}
+            , #{params.stdy}
+            , #{params.fnda}
+            , #{params.oppbYn}
+            , 'N'
+            , #{params.rgsnUserId}
+            , CURRENT_TIMESTAMP
+            , #{params.amnnUserId}
+            , CURRENT_TIMESTAMP
+        )
+    </insert>
+
+    <update id="updateBannerInfo">
+        UPDATE <include refid="MARKET"/>TB_BOX_MKT_BAN_INF_M
+        SET
+            TTL = #{params.ttl}
+            , CON = #{params.con}
+            , LINK = #{params.link}
+            , STDY = REPLACE(#{params.stdy}, '-', '')
+            , FNDA = REPLACE(#{params.fnda}, '-', '')
+            , OPPB_YN = #{params.oppbYn}
+            , FILE_ID = #{params.fileId}
+            , AMNN_USER_ID = #{params.amnnUserId}
+            , AMNN_TS = CURRENT_TIMESTAMP
+        WHERE 1=1
+        AND BAN_INF_ID = #{params.banInfId}
+    </update>
+
+    <update id="deleteBannerInfo">
+        UPDATE <include refid="MARKET"/>TB_BOX_MKT_BAN_INF_M
+        SET
+            DEL_YN = 'Y'
+            , AMNN_USER_ID = #{params.amnnUserId}
+            , AMNN_TS = CURRENT_TIMESTAMP
+        WHERE 1=1
+        AND BAN_INF_ID = #{params.banInfId}
+    </update>
+
+</mapper>

@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ibk.sb.restapi.biz.service.faq.repo.FaqRepo">
+
+    <sql id="MARKET"><include refid="com.ibk.sb.restapi.biz.service.common.repo.SchemaRepo.MARKET"/></sql>
+
+    <!--    PagingMapper ID-->
+    <sql id="pagingHeader"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageHeader"/></sql>
+    <sql id="pagingFooter"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageFooter"/></sql>
+
+    <!-- FAQ 리스트 조회  -->
+    <select id="selectFaqList" parameterType="RequestSearchFaqVO" resultType="FaqVO">
+        <include refid="pagingHeader"/>
+        SELECT
+            TBMFIM.FAQ_INF_ID
+            ,TBMFIM.INFO_SQN
+            ,TBMFIM.TTL
+            ,TBMFIM.CON
+            ,TBMFIM.USE_YN
+            ,TBMFIM.DEL_YN
+            ,TBMFIM.RGSN_TS
+            ,TBMFIM.RGSN_USER_ID
+            ,TBMFIM.AMNN_TS
+            ,TBMFIM.AMNN_USER_ID
+        FROM
+             <include refid="MARKET"/>TB_BOX_MKT_FAQ_INF_M TBMFIM
+        WHERE
+            1 = 1
+            AND TBMFIM.USE_YN = 'Y'
+            AND TBMFIM.DEL_YN = 'N'
+        <if test="faqInfId != null and !faqInfId.equals('')">
+            AND TBMFIM.FAQ_INF_ID = #{faqInfId}
+        </if>
+        <if test="ttl != null and !ttl.equals('')">
+            AND TBMFIM.TTL LIKE '%' || #{ttl} || '%'
+        </if>
+        <if test="con != null and !con.equals('')">
+            AND TBMFIM.CON LIKE '%' || #{con} || '%'
+        </if>
+        ORDER BY TBMFIM.RGSN_TS DESC, TBMFIM.INFO_SQN
+        <include refid="pagingFooter"/>
+    </select>
+
+    <!-- FAQ 리스트 상세  -->
+    <select id="selectFaqDetail" parameterType="RequestSearchFaqVO" resultType="FaqVO">
+        SELECT
+        TBMFIM.FAQ_INF_ID
+        ,TBMFIM.INFO_SQN
+        ,TBMFIM.TTL
+        ,TBMFIM.CON
+        ,TBMFIM.USE_YN
+        ,TBMFIM.DEL_YN
+        ,TBMFIM.RGSN_TS
+        ,TBMFIM.RGSN_USER_ID
+        ,TBMFIM.AMNN_TS
+        ,TBMFIM.AMNN_USER_ID
+        FROM
+        <include refid="MARKET"/>TB_BOX_MKT_FAQ_INF_M TBMFIM
+        WHERE
+        1 = 1
+        AND TBMFIM.USE_YN = 'Y'
+        AND TBMFIM.DEL_YN = 'N'
+        <if test="faqInfId != null and !faqInfId.equals('')">
+            AND TBMFIM.FAQ_INF_ID = #{faqInfId}
+        </if>
+    </select>
+
+    <!-- FAQ 리스트 등록  -->
+    <insert id="faqSave" parameterType="FaqVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_FAQ_INF_M
+        (
+            FAQ_INF_ID
+            ,INFO_SQN
+            ,TTL
+            ,CON
+            ,USE_YN
+            ,DEL_YN
+            ,RGSN_TS
+            ,RGSN_USER_ID
+        )
+        VALUES
+            (
+                #{faqInfId}
+                ,(SELECT NVL(max(INFO_SQN)+1,0) FROM <include refid="MARKET"/>TB_BOX_MKT_FAQ_INF_M)
+                ,#{ttl}
+                ,#{con}
+                ,'Y'
+                ,'N'
+                ,CURRENT_TIMESTAMP
+                ,#{rgsnUserId}
+            )
+    </insert>
+
+    <!-- FAQ 리스트 수정  -->
+    <update id="faqUpdate" parameterType="FaqVO">
+        UPDATE
+            <include refid="MARKET"/>TB_BOX_MKT_FAQ_INF_M TBMFIM
+        SET
+            TBMFIM.INFO_SQN = #{infoSqn}
+          ,TBMFIM.TTL = #{ttl}
+          ,TBMFIM.CON = #{con}
+          ,TBMFIM.AMNN_USER_ID = #{amnnUserId}
+          ,TBMFIM.AMNN_TS = CURRENT_TIMESTAMP
+        WHERE
+            TBMFIM.FAQ_INF_ID = #{faqInfId}
+    </update>
+
+    <!-- FAQ 리스트 삭제  -->
+    <update id="faqDelete" parameterType="FaqVO">
+        UPDATE
+        <include refid="MARKET"/>TB_BOX_MKT_FAQ_INF_M TBMFIM
+        SET
+        TBMFIM.DEL_YN='Y'
+        ,TBMFIM.AMNN_USER_ID =#{amnnUserId}
+        ,TBMFIM.AMNN_TS = CURRENT_TIMESTAMP
+        WHERE
+        TBMFIM.FAQ_INF_ID =#{faqInfId}
+    </update>
+</mapper>

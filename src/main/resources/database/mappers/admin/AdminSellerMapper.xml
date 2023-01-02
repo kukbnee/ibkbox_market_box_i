@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ibk.sb.restapi.biz.service.admin.repo.AdminSellerRepo">
+
+    <sql id="MARKET"><include refid="com.ibk.sb.restapi.biz.service.common.repo.SchemaRepo.MARKET"/></sql>
+
+    <!--    PagingMapper ID-->
+    <sql id="pagingHeader"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageHeader"/></sql>
+    <sql id="pagingFooter"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageFooter"/></sql>
+
+    <sql id="sellerList">
+        SELECT
+            A.SELR_USIS_ID,
+            I.BPLC_NM,
+            I.RPRSNTV_NM,
+            A.MMBRTYPE_ID,
+            B.COM_CD_NM		AS MMBRTYPE_NM,
+            A.MMBRSTTS_ID,
+            C.COM_CD_NM 	AS MMBRSTTS_NM,
+            D.PRDT_CNT,
+            D.AGT_PRDT_CNT,
+            (
+                -- 1. 수신받은 목록을 검색한다.
+                -- 2. 수신받은 목록의 답변인경우 SQN이 1증가하므로, 수신받은 목록의 +1한 SQN을 답변으로 가진다.
+                -- 3. 답변한 내용에 대해서만 가져온다.
+                -- 4. 문의와 답변한 차이에 대한 값에 대해 평균값을 구한다.(당일기준)
+                SELECT
+                    -- 전체합계 평균시간, 소수점 버림
+                    NVL(TRUNC(AVG(ROUND((TO_DATE(TO_CHAR(AN_RGSN_TS, 'YYYY-MM-DD HH24:MI:SS'), 'YYYY-MM-DD HH24:MI:SS') - TO_DATE(TO_CHAR(RGSN_TS, 'YYYY-MM-DD HH24:MI:SS'), 'YYYY-MM-DD HH24:MI:SS')) * 24 * 60, 2)), 0),0) AS AVG_DATE
+                FROM
+                (
+                    SELECT
+                        A2.INQR_INFO_ID --문의ID
+                        ,A2.INFO_SQN --문의순서
+                        ,A2.DPMP_USIS_ID --발신자(구매자)
+                        ,A2.RCVR_USIS_ID --수신자(판매자)
+                        ,A2.RGSN_TS
+                        ,(
+                            SELECT
+                                C.RGSN_TS
+                            FROM
+                                <include refid="MARKET"/>TB_BOX_MKT_INQU_R C
+                            WHERE 1=1
+                                AND	C.INQR_INFO_ID = A2.INQR_INFO_ID
+                                AND C.DPMP_USIS_ID = A2.RCVR_USIS_ID --판매자가 답변한 문의
+                                AND C.INFO_SQN = (A2.INFO_SQN+1) --받은것에 답변이니까 +1
+                        ) AS AN_RGSN_TS --답변한 시간 찾기
+                    FROM
+                        <include refid="MARKET"/>TB_BOX_MKT_INQU_R A2
+                    WHERE 1=1
+                        AND A2.RCVR_USIS_ID = A.SELR_USIS_ID --판매자가 받은 문의
+                        AND A2.INQR_INFO_ID IN(
+                                                SELECT
+                                                    B.INQR_INFO_ID
+                                                FROM <include refid="MARKET"/>TB_BOX_MKT_INQU_R B
+                                                WHERE 1=1
+                                                    AND B.RCVR_USIS_ID = A2.RCVR_USIS_ID --판매자가 받은 문의
+                                                GROUP BY B.INQR_INFO_ID
+                                                )
+                ) WHERE 1=1
+                    AND AN_RGSN_TS IS NOT NULL
+                    AND TO_DATE(TO_CHAR(RGSN_TS, 'YYYY-MM-DD'), 'YYYY-MM-DD') = TO_DATE(TO_CHAR(CURRENT_DATE, 'YYYY-MM-DD'), 'YYYY-MM-DD')
+                    AND TO_DATE(TO_CHAR(AN_RGSN_TS, 'YYYY-MM-DD'), 'YYYY-MM-DD') = TO_DATE(TO_CHAR(CURRENT_DATE, 'YYYY-MM-DD'), 'YYYY-MM-DD')
+            ) AS AVG_DATE
+        FROM <include refid="MARKET"/>TB_BOX_MKT_SELR_INF_M A
+        LEFT OUTER JOIN <include refid="MARKET"/>TB_BOX_MKT_FFPC_INF_M I ON (A.SELR_USIS_ID = I.UTLINSTT_ID)
+        LEFT OUTER JOIN <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D B ON (A.MMBRTYPE_ID = B.COM_CD_ID)
+        LEFT OUTER JOIN <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D C ON (A.MMBRSTTS_ID = C.COM_CD_ID)
+        LEFT OUTER JOIN (
+            SELECT
+                A.SELR_USIS_ID,
+                COUNT(*) AS PRDT_CNT,
+                SUM(DECODE(A.AGEN_INF_ID, NULL, 0, 1)) AS AGT_PRDT_CNT
+            FROM <include refid="MARKET"/>TB_BOX_MKT_PDF_INF_M A
+            LEFT OUTER JOIN <include refid="MARKET"/>TB_BOX_MKT_AGEN_INF_M G ON (A.AGEN_INF_ID = G.AGEN_INF_ID AND G.PCSNSTTS_ID = 'COC01003')
+            WHERE DEL_YN = 'N'
+            GROUP BY SELR_USIS_ID
+        ) D ON (A.SELR_USIS_ID = D.SELR_USIS_ID)
+        WHERE 1=1
+        AND A.USE_YN = 'Y'
+    </sql>
+
+    <!-- 판매자 목록 -->
+    <select id="selectSellerList" parameterType="RequestSellerSearchVO" resultType="AdminSellerVO">
+        <include refid="pagingHeader"/>
+        <include refid="sellerList" />
+        <if test="searchCompanyName != null and !searchCompanyName.equals('')">
+        AND (
+            UPPER(I.BPLC_NM) LIKE '%' || UPPER(#{searchCompanyName}) || '%'
+        )
+        </if>
+        <if test="searchRprsntvName != null and !searchRprsntvName.equals('')">
+        AND (
+            UPPER(I.RPRSNTV_NM) LIKE '%' || UPPER(#{searchRprsntvName}) || '%'
+            )
+        </if>
+        <if test="mmbrsttsId != null and !mmbrsttsId.equals('')">
+        AND A.MMBRTYPE_ID = #{mmbrsttsId}
+        </if>
+        ORDER BY A.RGSN_TS DESC
+        <include refid="pagingFooter"/>
+    </select>
+
+    <!-- 판매자 상세 조회 -->
+    <select id="selectSellerDeatil" resultType="AdminSellerVO">
+        <include refid="sellerList" />
+        <if test="selrUsisId != null and !selrUsisId.equals('')">
+        AND A.SELR_USIS_ID = #{selrUsisId}
+        </if>
+    </select>
+
+    <!-- 판매자 정보 상태 (에이전시) 변경 -->
+    <update id="updateSellerStatus">
+        UPDATE <include refid="MARKET"/>TB_BOX_MKT_SELR_INF_M
+        SET
+            MMBRSTTS_ID = #{mmbrsttsId}
+        WHERE
+            SELR_USIS_ID = #{selrUsisId}
+    </update>
+
+    <update id="updateProductStatus">
+        UPDATE <include refid="MARKET"/>TB_BOX_MKT_PDF_INF_M
+        SET
+            PDF_STTS_ID = #{pdfSttsId}
+        WHERE
+            PDF_INFO_ID = #{pdfInfoId}
+    </update>
+
+
+</mapper>

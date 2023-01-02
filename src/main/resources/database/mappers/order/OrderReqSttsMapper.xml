@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ibk.sb.restapi.biz.service.order.repo.OrderReqSttsRepo">
+
+    <sql id="MARKET"><include refid="com.ibk.sb.restapi.biz.service.common.repo.SchemaRepo.MARKET"/></sql>
+
+    <!-- PagingMapper ID -->
+    <sql id="pagingHeader"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageHeader"/></sql>
+    <sql id="pagingFooter"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageFooter"/></sql>
+
+    <select id="searchOrderPdf" parameterType="RequestSearchOrderVO" resultType="OrderReqProductVO">
+        SELECT
+            TBMOPR.ORDN_INFO_ID
+             , TBMOPR.INFO_SQN
+             , TBMOPR.ORDN_PTRN_ID
+             , TBMOPR.DVRY_PTRN_ID
+             , TBMOPR.ORDN_STTS_ID
+             , TBMOIM.PUCS_USIS_ID
+             , TBMOIM.SELR_USIS_ID
+             , TBMOIM.CNTT_NO_ID
+        FROM <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDF_R TBMOPR
+             INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_ORDER_INF_M TBMOIM ON TBMOPR.ORDN_INFO_ID = TBMOIM.ORDN_INFO_ID
+        WHERE 1=1
+          AND TBMOPR.ORDN_INFO_ID = #{ordnInfoId}
+          AND TBMOPR.INFO_SQN = #{ordnPdfInfoSqn}
+    </select>
+
+    <update id="updateOrderPdfStts" parameterType="RequestSearchOrderVO">
+        UPDATE
+            <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDF_R
+        SET
+            ORDN_STTS_ID = #{ordnSttsId}
+            , AMNN_USER_ID = #{rgsnUserId}
+            , AMNN_TS = CURRENT_TIMESTAMP
+        WHERE 1=1
+          AND ORDN_INFO_ID = #{ordnInfoId}
+          AND INFO_SQN = #{ordnPdfInfoSqn}
+    </update>
+
+    <insert id="insertOrderPdfH" parameterType="RequestSearchOrderVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDF_H
+        (
+            ORDN_INFO_ID
+            , INFO_SQN
+            , MDPH_SQN
+            , ORDN_PTRN_ID
+            , PDF_CTGY_ID
+            , PDF_NM
+            , QTY
+            , PDF_PRC
+            , TTAL_AMT
+            , DVRY_PTRN_ID
+            , DVRY_INFO_ID
+            , ORDN_STTS_ID
+            , PDF_INFO_ID
+            , RGSN_USER_ID
+            , RGSN_TS
+        )
+        SELECT
+            A.ORDN_INFO_ID
+             , A.INFO_SQN
+             , (NVL(B.MAX_MDPH_SQN, 0) + ROW_NUMBER() OVER (PARTITION BY A.ORDN_INFO_ID, A.INFO_SQN ORDER BY A.RGSN_TS ASC)) AS MDPH_SQN
+             , A.ORDN_PTRN_ID
+             , A.PDF_CTGY_ID
+             , A.PDF_NM
+             , A.QTY
+             , A.PDF_PRC
+             , A.TTAL_AMT
+             , A.DVRY_PTRN_ID
+             , A.DVRY_INFO_ID
+             , A.ORDN_STTS_ID
+             , A.PDF_INFO_ID
+             , #{rgsnUserId}
+             , CURRENT_TIMESTAMP
+        FROM <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDF_R A
+        LEFT OUTER JOIN (
+            SELECT ORDN_INFO_ID, INFO_SQN, NVL(MAX(MDPH_SQN), 1) AS MAX_MDPH_SQN
+            FROM <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDF_H
+            GROUP BY ORDN_INFO_ID, INFO_SQN
+        ) B ON (A.ORDN_INFO_ID = B.ORDN_INFO_ID AND A.INFO_SQN = B.INFO_SQN)
+        WHERE 1=1
+          AND A.ORDN_INFO_ID = #{ordnInfoId}
+          AND A.INFO_SQN = #{ordnPdfInfoSqn}
+    </insert>
+
+    <update id="updateOrderPDvry" parameterType="RequestSearchOrderVO">
+        UPDATE
+            <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDVRY_R
+        SET MAINNB_NO = #{mainnbNo}
+            , PCSVCMP_PTRN_ID = #{pcsvcmpPtrnId}
+            , PCSVCMP_NM = #{pcsvcmpNm}
+            , AMNN_USER_ID = #{rgsnUserId}
+            , AMNN_TS = CURRENT_TIMESTAMP
+        WHERE 1=1
+          AND ORDN_INFO_ID = #{ordnInfoId}
+          AND INFO_SQN = #{ordnPdfInfoSqn}
+    </update>
+
+    <insert id="insertOrderDvryForDvryInput" parameterType="RequestSearchOrderVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_ORDER_DVRY_R
+        (
+            ORDN_INFO_ID
+            , INFO_SQN
+            , ENTP_INFO_ID
+            , TRSPREQS_NO
+            , MAINNB_NO
+            , DVRYNONE
+            , RLONTF_ZPCD
+            , RLONTF_ADR
+            , RLONTF_DTAD
+            , RCAR_NM
+            , RCAR_CNPLONE
+            , RECV_CNPLTWO
+            , RECV_ZPCD
+            , RECV_ADR
+            , RECV_DTAD
+            , RGSN_USER_ID
+            , RGSN_TS
+            , AMNN_USER_ID
+            , AMNN_TS
+        )
+        SELECT
+            TBMOPDR.ORDN_INFO_ID
+            , TBMOPDR.INFO_SQN
+            , #{entpInfoId}
+            , #{trspreqsNo}
+            , #{mainnbNo}
+            , TBMOPDR.DVRYNONE
+            , TBMPDM.RLONTF_ZPCD
+            , TBMPDM.RLONTF_ADR
+            , TBMPDM.RLONTF_DTAD
+            , TBMOPDR.RCAR_NM       AS RECV
+            , TBMOPDR.RCAR_CNPLONE  AS RECV_CNPLONE
+            , TBMOPDR.RECV_CNPLTWO
+            , TBMOPDR.RECV_ZPCD
+            , TBMOPDR.RECV_ADR
+            , TBMOPDR.RECV_DTAD
+            , TBMOPDR.RGSN_USER_ID
+            , TBMOPDR.RGSN_TS
+            , #{rgsnUserId}
+            , CURRENT_TIMESTAMP
+        FROM <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDVRY_R TBMOPDR
+        INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDF_R TBMOPR ON TBMOPR.ORDN_INFO_ID = TBMOPDR.ORDN_INFO_ID
+            AND TBMOPR.INFO_SQN = TBMOPDR.INFO_SQN
+        INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_DVRY_M TBMPDM ON TBMPDM.PDF_INFO_ID = TBMOPR.PDF_INFO_ID
+        WHERE 1=1
+            AND TBMOPDR.ORDN_INFO_ID = #{ordnInfoId}
+            AND TBMOPDR.INFO_SQN = #{ordnPdfInfoSqn}
+    </insert>
+
+    <delete id="deleteOrderPDvryForDvryInput" parameterType="RequestSearchOrderVO">
+        DELETE FROM <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDVRY_R
+        WHERE 1=1
+          AND ORDN_INFO_ID = #{ordnInfoId}
+          AND INFO_SQN = #{ordnPdfInfoSqn}
+    </delete>
+
+    <update id="updateOrderPdfForDvryInput" parameterType="RequestSearchOrderVO">
+        UPDATE <include refid="MARKET"/>TB_BOX_MKT_ORDER_PDF_R
+        SET
+            DVRY_PTRN_ID = #{dvryPtrnId}
+          , DVRY_INFO_ID = #{dvryInfoId}
+          , AMNN_USER_ID = #{rgsnUserId}
+          , AMNN_TS = CURRENT_TIMESTAMP
+        WHERE ORDN_INFO_ID = #{ordnInfoId}
+          AND INFO_SQN = #{ordnPdfInfoSqn}
+    </update>
+
+</mapper>

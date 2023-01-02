@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ibk.sb.restapi.biz.service.order.repo.OrderProductRepo">
+
+    <sql id="MARKET"><include refid="com.ibk.sb.restapi.biz.service.common.repo.SchemaRepo.MARKET"/></sql>
+
+    <!--    PagingMapper ID-->
+    <sql id="pagingHeader"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageHeader"/></sql>
+    <sql id="pagingFooter"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageFooter"/></sql>
+
+    <!-- 주문가능 상품정보 여부 체크 -->
+    <select id="orderCheckProductInfo" parameterType="RequestProductVO" resultType="Integer">
+        SELECT
+            COUNT(*)
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_PDF_INF_M TBMPIM
+        WHERE 1=1
+            AND TBMPIM.PDF_INFO_ID = #{pdfInfoId}
+            AND TBMPIM.PDF_PGRS_YN = #{pdfPgrsYn}
+            AND TBMPIM.PDF_STTS_ID = #{pdfSttsId}
+    </select>
+
+    <!-- 상품 판매정보 가져오기 -->
+    <select id="getProductSalL" parameterType="OrderProductSalLVO" resultType="OrderProductSalLVO">
+        SELECT
+            TBMPSL.PDF_INFO_ID
+             ,TBMPSL.PDF_PRC
+             ,TBMCCDPR.COM_CD_NM AS COM_PRCUT_NM
+             ,TBMCCDPD.COM_CD_NM AS COM_PDFUT_NM
+             ,TBMPSL.SALE_PRC
+             ,TBMPSL.PRC_DSCS_YN
+             ,TBMPSL.ESTT_USE_EN
+             ,TBMPSL.ORDN_QTY_LMTN_USYN
+             ,TBMPSL.ORDN_MNMM_QTY
+             ,TBMPSL.ORDN_MXMM_QTY_YN
+             ,TBMPSL.ORDN_MXMM_QTY
+             ,TBMPIM.SELR_USIS_ID
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_PDF_SAL_L TBMPSL /*판매정보*/
+            INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_INF_M TBMPIM ON TBMPIM.PDF_INFO_ID = TBMPSL.PDF_INFO_ID
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D TBMCCDPR ON TBMCCDPR.COM_CD_ID = TBMPSL.COM_PRCUT_ID
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D TBMCCDPD ON TBMCCDPD.COM_CD_ID = TBMPSL.COM_PDFUT_ID
+        WHERE 1=1
+          AND TBMPSL.PDF_INFO_ID = #{pdfInfoId}
+          AND TBMPSL.PRC_DSCS_YN = #{prcDscsYn} /*가격협의여부 아닌것*/
+    </select>
+
+    <!-- 상품 정보 가져오기 -->
+    <select id="getProductInfM" parameterType="OrderProductInfMVO" resultType="OrderProductInfMVO">
+        SELECT
+            TBMPIM.PDF_INFO_ID
+             ,TBMPIM.SELR_USIS_ID
+             ,TBMPIM.PDF_CTGY_ID
+             ,TBMPIM.PDF_PGRS_YN
+             ,TBMPIM.PDF_STTS_ID
+             ,TBMPIM.PDF_NM
+             ,TBMPIM.MDLNM
+             ,TBMPIM.BRF_DESC
+             ,TBMPIM.BRF_SUB_DESC
+             ,TBMPIM.PTNT_INFO_YN
+             ,TBMPIM.AGEN_INF_ID
+            ,CASE WHEN TBMPIM.AGEN_INF_ID IS NULL THEN 'N' ELSE 'Y' END AS PDF_AGEN_STATE
+            ,'{'||TBMCC.TMS1_CLSF_NM||'},{'||TBMCC.TMS2_CLSF_NM||'},{'||TBMCC.TMS3_CLSF_NM||'},{'||TBMCC.TMS4_CLSF_NM||'},{'||TBMCC.TMS5_CLSF_NM||'}' AS CTGY_DATA
+            ,TBMFIM.BPLC_NM
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_PDF_INF_M TBMPIM /*상품정보*/
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_FFPC_INF_M TBMFIM ON TBMFIM.UTLINSTT_ID = TBMPIM.SELR_USIS_ID
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_CTGY_C TBMCC ON TBMCC.CTGY_ID = TBMPIM.PDF_CTGY_ID
+        WHERE 1=1
+          AND TBMPIM.PDF_INFO_ID = #{pdfInfoId}
+          AND TBMPIM.PDF_PGRS_YN = #{pdfPgrsYn} /*진열중*/
+          AND TBMPIM.PDF_STTS_ID = #{pdfSttsId} /*판매중*/
+    </select>
+
+    <!-- 상품 배송정보 가져오기 -->
+    <select id="getProductDelL" parameterType="OrderProductDelLVO" resultType="OrderProductDelLVO">
+        SELECT
+            TBMPDL.PDF_INFO_ID
+            ,TBMPDL.DVRY_TYPE_ID /*배송타입*/
+            ,TBMPDL.DVRY_PTRN_ID /*배송유형*/
+            ,TBMPDL.DVRYNONE_PTRN_ID /*배송비유형*/
+            ,TBMPDL.DVRY_BSCPRCE /*배송기본가*/
+            ,TBMPDL.ENTP_INFO_ID /*배송업체정보*/
+            ,TBMDIM.ENTP_NM /*배송업체명*/
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_PDF_DEL_L TBMPDL
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_DVRY_INF_M TBMDIM ON TBMDIM.ENTP_INFO_ID = TBMPDL.ENTP_INFO_ID
+        WHERE 1=1
+          AND TBMPDL.PDF_INFO_ID = #{pdfInfoId}
+    </select>
+
+    <!-- 상품 파일정보 가져오기 -->
+    <select id="getProductFieR" parameterType="OrderProductFieRVO" resultType="OrderProductFieRVO">
+        SELECT
+            TBMFAM.FILE_ID
+            ,TBMFAM.FILE_NM
+            ,TBMFAM.FILE_PATH
+            ,TBMFAM.FILE_ETNS
+            ,TBMFAM.FILE_PTRN
+            ,TBMFAM.FILE_SIZE
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_FILE_ATCH_M TBMFAM
+        WHERE 1=1
+          AND TBMFAM.FILE_ID = (
+                                    SELECT
+                                        FILE_ID
+                                    FROM
+                                        (
+                                            SELECT
+                                                TBMPFR.FILE_ID
+                                            FROM <include refid="MARKET"/>TB_BOX_MKT_PDF_FIE_R TBMPFR WHERE TBMPFR.PDF_INFO_ID = #{pdfInfoId} AND TBMPFR.FILE_PTRN_ID = #{filePtrnId}
+                                        ) WHERE rownum = 1
+                                )
+          AND TBMFAM.DEL_YN = 'N'
+    </select>
+
+    <!-- 상품 수량별 배송정보 가져오기 -->
+    <select id="getProductQtyDvryM" parameterType="String" resultType="OrderProductQtyDvryMVO">
+        SELECT
+            TBMQDM.INFO_SQN
+             ,TBMQDM.QTY
+             ,TBMQDM.COM_PDF_UT_ID
+             ,TBMCCDUT.COM_CD_NM AS COM_PDF_UT_NM
+             ,TBMQDM.AMT
+             ,TBMQDM.COM_PRC_UT_ID
+             ,TBMCCDPRC.COM_CD_NM AS COM_PRC_UT_NM
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_QTY_DVRY_M TBMQDM
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D TBMCCDUT ON TBMCCDUT.COM_CD_ID = TBMQDM.COM_PDF_UT_ID
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D TBMCCDPRC ON TBMCCDPRC.COM_CD_ID = TBMQDM.COM_PRC_UT_ID
+        WHERE 1=1
+          AND TBMQDM.PDF_INFO_ID = #{pdfInfoId}
+        ORDER BY TBMQDM.INFO_SQN ASC;
+    </select>
+
+    <!-- 상품 지역별 배송정보 가져오기 -->
+    <select id="getProductPearDvryM" parameterType="String" resultType="OrderProductPearDvryMVO">
+        SELECT
+            TBMPDM.INFO_SQN
+             ,TBMPDM.TRL
+             ,TBMPDM.CTCOCRWD
+             ,TBMPDM.AMT
+             ,TBMPDM.COM_PRC_UT_ID
+             ,TBMCCD.COM_CD_NM AS COM_PRC_UT_NM
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_PEAR_DVRY_M TBMPDM
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D TBMCCD ON TBMCCD.COM_CD_ID = TBMPDM.COM_PRC_UT_ID
+        WHERE 1=1
+          AND TBMPDM.PDF_INFO_ID = #{pdfInfoId}
+        ORDER BY TBMPDM.INFO_SQN ASC
+    </select>
+
+    <!-- 상품 화물서비스 기본정보 가져오기 -->
+    <select id="getProductDvryM" parameterType="OrderProductDvryMVO" resultType="OrderProductDvryMVO">
+        SELECT
+            TBMPDM.FILE_ID
+             ,TBMPDM.RLONTF_ZPCD
+             ,TBMPDM.RLONTF_ADR
+             ,TBMPDM.RLONTF_DTAD
+             ,TBMPDM.PRDTPCKN_UT_ID
+             ,TBMCCD.COM_CD_NM
+             ,TBMPDM.DCH_GDS_PRC
+             ,TBMPDM.PRDT_BRDH
+             ,TBMPDM.PRDT_VRTC
+             ,TBMPDM.PRDT_AHGD
+             ,TBMPDM.PRDT_WGT
+             ,TBMFAM.FILE_NM
+             ,TBMFAM.FILE_PATH
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_PDF_DVRY_M TBMPDM
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D TBMCCD ON TBMCCD.COM_CD_ID = TBMPDM.PRDTPCKN_UT_ID
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_FILE_ATCH_M TBMFAM ON TBMFAM.FILE_ID = TBMPDM.FILE_ID AND TBMFAM.DEL_YN ='N'
+        WHERE 1=1
+          AND TBMPDM.PDF_INFO_ID = #{pdfInfoId}
+    </select>
+
+    <!-- 상품 화물서비스 견적정보 가져오기 -->
+    <select id="getProductDvryEsttM" parameterType="String" resultType="OrderProductDvryEsttMVO">
+        SELECT
+            TBMDEM.INFO_SQN
+             ,TBMDEM.QTY
+             ,TBMDEM.COM_PDF_UT_ID
+             ,TBMCCDUT.COM_CD_NM AS COM_PDF_UT_NM
+             ,TBMDEM.ESTT_AMT
+             ,TBMDEM.COM_PRC_UT_ID
+             ,TBMCCDPRC.COM_CD_NM AS COM_PRC_UT_NM
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_DVRY_ESTT_M TBMDEM
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D TBMCCDUT ON TBMCCDUT.COM_CD_ID = TBMDEM.COM_PDF_UT_ID
+            LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D TBMCCDPRC ON TBMCCDPRC.COM_CD_ID = TBMDEM.COM_PRC_UT_ID
+        WHERE 1=1
+          AND TBMDEM.PDF_INFO_ID = #{pdfInfoId}
+        ORDER BY TBMDEM.INFO_SQN ASC;
+    </select>
+
+</mapper>

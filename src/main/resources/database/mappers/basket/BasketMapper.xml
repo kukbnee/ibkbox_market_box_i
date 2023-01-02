@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ibk.sb.restapi.biz.service.basket.repo.BasketRepo">
+
+    <sql id="MARKET"><include refid="com.ibk.sb.restapi.biz.service.common.repo.SchemaRepo.MARKET"/></sql>
+
+
+    <!--    PagingMapper ID-->
+    <sql id="pagingHeader"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageHeader"/></sql>
+    <sql id="pagingFooter"><include refid="com.ibk.sb.restapi.biz.service.common.repo.PageRepo.pageFooter"/></sql>
+
+    <!--    장바구니 리스트 조회 -->
+    <select id="selectBasketList" parameterType="string" resultType="SummaryBasketVO">
+        SELECT
+            TBMPCR.PDF_INFO_ID
+            , TBMPCR.PDF_CNT
+            , TBMPCR.UT_ID
+
+            , TBMPIM.SELR_USIS_ID
+            , TBMFIM.BPLC_NM AS SELR_USIS_NAME
+
+            , TBMPIM.PDF_STTS_ID
+            , TBMCCDPSI.COM_CD_NM AS PDF_STTS_NAME
+
+            , TBMPIM.AGEN_INF_ID
+            , TBMPIM.PDF_NM
+            , TBMPIM.PDF_PGRS_YN
+
+            , TBMPSL.PDF_PRC
+            , TBMPSL.SALE_PRC
+            , TBMPSL.PRC_DSCS_YN
+            , TBMPSL.ORDN_QTY_LMTN_USYN
+            , TBMPSL.ORDN_MNMM_QTY
+            , TBMPSL.ORDN_MXMM_QTY_YN
+            , TBMPSL.ORDN_MXMM_QTY
+            , TBMPSL.COM_PRCUT_ID
+
+            , TBMCCDCPI.COM_CD_NM AS COM_PRCUT_NAME
+
+            , TBMPFR.FILE_ID
+            , TBMPFR.FILE_ID AS IMG_FILE_ID
+
+            , 'N' AS SELECTED_FLG
+
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_PDF_CART_R TBMPCR
+        INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_INF_M TBMPIM ON TBMPIM.PDF_INFO_ID = TBMPCR.PDF_INFO_ID
+        LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_FFPC_INF_M TBMFIM ON TBMFIM.UTLINSTT_ID = TBMPIM.SELR_USIS_ID
+        LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D TBMCCDPSI ON TBMCCDPSI.COM_CD_ID = TBMPIM.PDF_STTS_ID
+        LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_SAL_L TBMPSL ON TBMPSL.PDF_INFO_ID = TBMPIM.PDF_INFO_ID
+        LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_COM_CD_D TBMCCDCPI ON TBMCCDCPI.COM_CD_ID = TBMPSL.COM_PRCUT_ID
+        LEFT JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_FIE_R TBMPFR ON TBMPFR.PDF_INFO_ID = TBMPSL.PDF_INFO_ID AND FILE_PTRN_ID = #{filePtrnId} AND TBMPFR.INFO_SQN = 1
+
+        WHERE 1 = 1
+            AND TBMPIM.DEL_YN = 'N'
+            AND TBMPIM.PDF_PGRS_YN = 'Y' /* 진열함 */
+            AND TBMPCR.PUCS_USIS_ID = #{pucsUsisId}
+            AND TBMPCR.PUCS_ID = #{pucsId}
+            <if test="pdfInfoId != null and !pdfInfoId.equals('')">
+                AND TBMPCR.PDF_INFO_ID = #{pdfInfoId}
+            </if>
+    </select>
+
+    <select id="selectUserBasketCnt" parameterType="string" resultType="int">
+        SELECT
+            CASE WHEN SUM(1) IS NULL THEN 0 ELSE SUM(1) END
+
+        FROM
+            <include refid="MARKET"/>TB_BOX_MKT_PDF_CART_R TBMPCR
+
+            INNER JOIN <include refid="MARKET"/>TB_BOX_MKT_PDF_INF_M TBMPIM ON TBMPIM.PDF_INFO_ID = TBMPCR.PDF_INFO_ID
+
+        WHERE
+            1 = 1
+            AND TBMPCR.PUCS_USIS_ID = #{utlinsttId}
+            AND TBMPCR.PUCS_ID = #{loginUserId}
+            AND TBMPIM.DEL_YN = 'N'
+    </select>
+
+    <!--    장바구니 등록 -->
+    <insert id="insertBasket" parameterType="BasketVO">
+        INSERT INTO <include refid="MARKET"/>TB_BOX_MKT_PDF_CART_R
+        (
+            PUCS_USIS_ID
+            , PUCS_ID
+            , PDF_INFO_ID
+            , PDF_CNT
+            , UT_ID
+            , RGSN_TS
+            , RGSN_USER_ID
+            , AMNN_TS
+            , AMNN_USER_ID
+        )
+        VALUES
+        (
+            #{pucsUsisId}
+            , #{pucsId}
+            , #{pdfInfoId}
+            , #{pdfCnt}
+            , #{utId}
+            , CURRENT_TIMESTAMP
+            , #{rgsnUserId}
+            , CURRENT_TIMESTAMP
+            , #{amnnUserId}
+        )
+    </insert>
+
+    <!--    장바구니 수정 -->
+    <update id="updateBasket" parameterType="BasketVO">
+        UPDATE
+            <include refid="MARKET"/>TB_BOX_MKT_PDF_CART_R
+        SET
+            PDF_CNT              = PDF_CNT + #{pdfCnt}
+            , AMNN_TS            = CURRENT_TIMESTAMP
+            , AMNN_USER_ID       = #{amnnUserId}
+        WHERE
+            PUCS_USIS_ID = #{pucsUsisId}
+            AND PUCS_ID = #{pucsId}
+            AND PDF_INFO_ID = #{pdfInfoId}
+    </update>
+
+    <!--    장바구니 삭제 -->
+    <delete id="deleteBasket" parameterType="BasketVO">
+        DELETE FROM <include refid="MARKET"/>TB_BOX_MKT_PDF_CART_R
+        WHERE
+            PUCS_USIS_ID = #{pucsUsisId}
+            AND PUCS_ID = #{pucsId}
+            AND PDF_INFO_ID = #{pdfInfoId}
+    </delete>
+
+</mapper>
